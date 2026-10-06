@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beamline: build a particle accelerator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --page:#eceffb; --panel:#ffffff; --line:#d4d9f3; --text:#151b3f; --muted:#59628f;
+  --f:#0688c9; --d:#cf2f78; --rf:#b86f00; --dip:#6b4fd8; --beam:#077f8f; --heat:#cf4316; --chip:#e1e5f8;
+  --focus:#4b5cff;
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible','Segoe UI',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0c1233; --panel:#151d4a; --line:#2a3672; --text:#eef1ff; --muted:#9ea8da;
+    --f:#39c5ff; --d:#ff5aa5; --rf:#ffb340; --dip:#b8a2ff; --beam:#8ff5ff; --heat:#ff7a4d; --chip:#1b2457;
+    --focus:#9fb0ff; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0c1233; --panel:#151d4a; --line:#2a3672; --text:#eef1ff; --muted:#9ea8da;
+  --f:#39c5ff; --d:#ff5aa5; --rf:#ffb340; --dip:#b8a2ff; --beam:#8ff5ff; --heat:#ff7a4d; --chip:#1b2457;
+  --focus:#9fb0ff; color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--page);color:var(--text);font:16px/1.5 var(--body);-webkit-text-size-adjust:100%}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto;padding:16px 16px 40px}
+
+.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 16px;margin-bottom:14px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,7vw,46px);line-height:1;letter-spacing:-.03em;margin:0;
+  font-variation-settings:"opsz" 96}
+h1 span{display:block;font-family:var(--body);font-weight:400;font-size:15px;letter-spacing:0;color:var(--muted);margin-top:6px}
+.levels{display:flex;gap:6px;flex-wrap:wrap}
+.levels button{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  padding:6px 12px 6px 6px;cursor:pointer;font-size:14px}
+.levels button .n{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--chip);
+  font-family:var(--display);font-weight:700;font-size:13px}
+.levels button[aria-current="true"]{border-color:var(--text)}
+.levels button[aria-current="true"] .n{background:var(--text);color:var(--page)}
+.levels .mini{display:flex;gap:1px}
+.levels .mini svg{width:11px;height:11px}
+
+.mission h2{font-family:var(--display);font-weight:700;font-size:24px;line-height:1.15;letter-spacing:-.01em;margin:0 0 4px}
+.mission p{margin:0 0 14px;max-width:62ch;color:var(--text)}
+
+.stage{position:relative;border-radius:18px;overflow:hidden;background:#0a0f2c;
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 12px 40px -18px rgba(10,15,44,.55);touch-action:manipulation}
+.stage canvas{position:absolute;left:0;top:0;display:block}
+#cvTop{cursor:pointer}
+.stage:focus-within{outline:2px solid var(--focus);outline-offset:3px}
+
+.readout{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:8px;margin:12px 0 4px}
+.stat{padding:2px 4px}
+.stat b{display:block;font-family:var(--display);font-weight:700;font-size:clamp(24px,6vw,34px);line-height:1.05;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;transition:color .25s}
+.stat small{display:block;color:var(--muted);font-size:13px;line-height:1.3;margin-top:2px}
+.stat b.ok{color:var(--beam)}
+.stat b.bad{color:var(--heat)}
+
+.banner{display:none;margin:12px 0 4px;padding:14px 16px;border-radius:14px;background:var(--panel);border:1px solid var(--line);
+  border-left:4px solid var(--beam)}
+.banner.show{display:block;animation:pop .35s ease-out}
+@keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+.banner strong{font-family:var(--display);font-size:20px;display:flex;align-items:center;gap:8px}
+.banner p{margin:6px 0 10px;max-width:64ch}
+.banner .row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--chip);border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:700}
+.btn.primary{background:var(--text);color:var(--page);border-color:var(--text)}
+
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 6px}
+.tool{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border-radius:14px;border:1.5px solid var(--line);
+  background:var(--panel);cursor:pointer;min-height:68px;font-size:14px;font-weight:700;line-height:1.15;text-align:center}
+.tool svg{width:34px;height:26px}
+.tool[aria-pressed="true"]{border-color:var(--tc);box-shadow:0 0 0 3px color-mix(in srgb,var(--tc) 22%,transparent)}
+.tool:disabled{opacity:.45;cursor:not-allowed}
+.tool .lock{font-weight:400;font-size:11.5px;color:var(--muted)}
+.tooldesc{margin:2px 2px 0;color:var(--muted);font-size:14.5px;min-height:1.5em}
+
+.hint{margin:14px 0 6px;padding:12px 14px;border-radius:12px;background:var(--chip);max-width:70ch}
+.hint b{font-weight:700}
+
+.panel{display:grid;grid-template-columns:1fr;gap:14px;margin-top:16px}
+@media (min-width:760px){.panel{grid-template-columns:1.1fr 1fr}}
+.goals h3,.controls h3{font-family:var(--display);font-weight:700;font-size:17px;margin:0 0 8px}
+.goals ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.goals li{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.goals li svg{flex:none;width:20px;height:20px;margin-top:1px}
+.goals li .live{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap;padding-left:6px}
+.goals li.met .live{color:var(--beam);font-weight:700}
+.controls{display:grid;gap:10px;align-content:start}
+.controls .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.switch{display:flex;align-items:center;gap:8px;cursor:pointer}
+.switch input{width:18px;height:18px;accent-color:var(--beam)}
+.current{display:none;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.current.show{display:block}
+.current label{display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px}
+.current label span{font-weight:400;color:var(--muted)}
+.current input{width:100%;accent-color:var(--heat)}
+.current p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+
+.dial{display:none;margin:10px 0 4px;padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+.dial.show{display:block}
+.dial-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.dial-top label{font-family:var(--display);font-weight:700;font-size:17px}
+.dial-top output{font-family:var(--display);font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;color:var(--dip)}
+.dial-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.dial-row input{flex:1;accent-color:var(--dip);height:28px}
+.btn.sq{width:44px;height:44px;padding:0;font-size:22px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.dial p{margin:6px 0 0;font-size:14px;color:var(--muted)}
+details.real{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+details.real summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px}
+details.real p,details.real li{max-width:68ch;font-size:15px}
+details.real ul{padding-left:20px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:420px){
+  .wrap{padding:12px 12px 32px}
+  .readout{grid-template-columns:1.2fr 1fr 1fr;gap:4px}
+  .tool{min-height:62px;font-size:13px}
+}
+@media (prefers-reduced-motion: reduce){.banner.show{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Beamline<span>Build a particle accelerator, one magnet at a time.</span></h1>
+    <nav class="levels" id="levels" aria-label="Levels"></nav>
+  </header>
+
+  <section class="mission" aria-live="polite">
+    <h2 id="lvTitle"></h2>
+    <p id="lvBrief"></p>
+  </section>
+
+  <div class="stage" id="stage">
+    <canvas id="cvBase" aria-hidden="true"></canvas>
+    <canvas id="cvTop" tabindex="0" role="application"
+      aria-label="Beamline. Use left and right arrows to choose a slot, Enter to place the selected part, Delete to empty it."></canvas>
+  </div>
+
+  <div class="readout" aria-live="polite">
+    <div class="stat"><b id="rDel">0%</b><small>of the beam reaches the target</small></div>
+    <div class="stat"><b id="rE">10 MeV</b><small>proton energy</small></div>
+    <div class="stat"><b id="rV">14%</b><small id="rVl">of light speed</small></div>
+  </div>
+
+  <div class="dial" id="dial">
+    <div class="dial-top"><label for="bField">Dipole field</label><output id="bVal">0.000 T</output></div>
+    <div class="dial-row">
+      <button class="btn sq" id="bMinus" aria-label="Lower the field a little">&minus;</button>
+      <input type="range" id="bField" min="0" max="1" step="0.002" value="0">
+      <button class="btn sq" id="bPlus" aria-label="Raise the field a little">+</button>
+    </div>
+    <p id="bNote"></p>
+  </div>
+
+  <div class="banner" id="banner" role="status">
+    <strong id="bTitle"></strong>
+    <p id="bText"></p>
+    <div class="row">
+      <button class="btn primary" id="bNext">Next level</button>
+      <button class="btn" id="bClose">Keep building</button>
+    </div>
+  </div>
+
+  <div class="tools" id="tools" role="toolbar" aria-label="Parts"></div>
+  <p class="tooldesc" id="toolDesc"></p>
+
+  <p class="hint" id="hint"></p>
+
+  <div class="panel">
+    <section class="goals">
+      <h3>Stars</h3>
+      <ul id="goals"></ul>
+    </section>
+    <section class="controls">
+      <h3>Controls</h3>
+      <div class="current" id="currentBox">
+        <label for="current">Beam current <span id="curLbl">Low</span></label>
+        <input type="range" id="current" min="0" max="100" step="1" value="0">
+        <p>More protons per second. They repel each other, so an intense beam swells. This is called space charge.</p>
+      </div>
+      <label class="switch"><input type="checkbox" id="envT" checked> Show beam outline</label>
+      <div class="row">
+        <button class="btn" id="clear">Clear the line</button>
+      </div>
+    </section>
+  </div>
+
+  <details class="real">
+    <summary>What's real in this game</summary>
+    <p>Every dot is one of 2,000 simulated protons, each with its own small offset and angle. The game tracks all of them through your line and counts how many survive.</p>
+    <ul>
+      <li>Quadrupoles are thin lenses. Each focuses in one plane and defocuses in the other, which is why the top and side views differ. Alternating them gives net focusing in both planes, the principle behind every large accelerator since the 1950s.</li>
+      <li>Magnet strength is fixed, so a magnet's focal length grows with the protons' momentum. Faster beams are stiffer and harder to bend.</li>
+      <li>Each RF cavity adds 5 MeV. Angles shrink in proportion to the momentum gain (adiabatic damping), so the beam tightens as it accelerates.</li>
+      <li>The pipe wall is a hard aperture. A proton that touches it is lost, and the glow on the wall shows where losses pile up.</li>
+      <li>The bending magnet is a 90&deg; sector dipole. The field it needs is set by the beam's momentum (its magnetic rigidity, B&rho; = p/e), shown in real tesla for a 1.27 m bending radius. A sector dipole also focuses gently in the bend plane.</li>
+      <li>The game forgives field errors far more than a real machine would. Real dipoles are matched to the beam within a few parts in ten thousand.</li>
+      <li>In the workshop, beam current adds linear space charge, which weakens as the beam speeds up (it scales with 1/(&beta;&gamma;)&sup3;).</li>
+      <li>Left out for now: RF timing and bunching, energy spread (and the dispersion it causes in a bend), and nonlinear fields.</li>
+    </ul>
+  </details>
+</div>
+<script>
+// ---- Beam physics engine (shared by game + tests) ----
+const PHYS = (() => {
+  const M = 938.272; // proton rest mass, MeV
+  const pOf = T => Math.sqrt(T * T + 2 * T * M);
+  const betaOf = T => pOf(T) / (T + M);
+  const bgOf = T => pOf(T) / M;
+  function rng(seed) {
+    let a = seed >>> 0;
+    return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function gaussPair(r) {
+    let u = 0; while (u < 1e-12) u = r(); const v = r();
+    const m = Math.sqrt(-2 * Math.log(u)); return [m * Math.cos(2 * Math.PI * v), m * Math.sin(2 * Math.PI * v)];
+  }
+  const SUB = 10; // grid steps per metre (slot = 1 m)
+  // beam: {sig0, sigp, T0, K0}; lattice: {N, f0, dT, a}
+  function simulate(cfg, P, nPart = 1500, seed = 7) {
+    const N = cfg.length, a = P.a, ds = 1 / SUB;
+    const sEnd = N + 0.5;
+    const nS = Math.round(sEnd * SUB) + 1;
+    const X = new Float32Array(nPart * nS), Y = new Float32Array(nPart * nS);
+    const x = new Float64Array(nPart), xp = new Float64Array(nPart), y = new Float64Array(nPart), yp = new Float64Array(nPart);
+    const alive = new Uint8Array(nPart).fill(1);
+    const lossS = new Float32Array(nPart).fill(-1), lossPlane = new Int8Array(nPart), lossSide = new Int8Array(nPart);
+    const r = rng(seed);
+    for (let i = 0; i < nPart; i++) {
+      const [g1, g2] = gaussPair(r), [g3, g4] = gaussPair(r);
+      x[i] = g1 * P.sig0; xp[i] = g2 * P.sigp; y[i] = g3 * P.sig0; yp[i] = g4 * P.sigp;
+    }
+    const p0 = pOf(P.T0), bg0 = bgOf(P.T0);
+    let T = P.T0;
+    const Tat = new Float32Array(nS), sigX = new Float32Array(nS), sigY = new Float32Array(nS), aliveFrac = new Float32Array(nS);
+    const kickIdx = new Map();
+    for (let k = 0; k < N; k++) kickIdx.set(Math.round((k + 0.5) * SUB), k);
+    // dipole region(s): contiguous 'B' slots form one sector bend of angle P.bendDeg
+    const inB = new Uint8Array(nS);
+    let b0 = cfg.indexOf('B'), b1 = cfg.lastIndexOf('B') + 1, rho = 0, Breq = 0, delta = 0, Tbend = 0, turn = 0;
+    if (b0 >= 0) {
+      rho = (b1 - b0) / (P.bendDeg * Math.PI / 180);
+      for (let j = Math.round(b0 * SUB); j < Math.round(b1 * SUB); j++) inB[j] = 1;
+    }
+    let lostX = 0, lostY = 0;
+    const lossHist = new Float32Array(N + 1);
+    function stats(j) {
+      let sx = 0, sy = 0, n = 0;
+      for (let i = 0; i < nPart; i++) if (alive[i]) { sx += x[i] * x[i]; sy += y[i] * y[i]; n++; }
+      return n ? [Math.sqrt(sx / n), Math.sqrt(sy / n), n] : [0, 0, 0];
+    }
+    for (let j = 0; j < nS; j++) {
+      // record + loss check
+      for (let i = 0; i < nPart; i++) {
+        X[i * nS + j] = x[i]; Y[i * nS + j] = y[i];
+        if (!alive[i]) continue;
+        const ax = Math.abs(x[i]), ay = Math.abs(y[i]);
+        if (ax > a || ay > a) {
+          alive[i] = 0;
+          const px = Math.abs(X[i * nS + Math.max(0, j - 1)]), py = Math.abs(Y[i * nS + Math.max(0, j - 1)]);
+          const fx = ax > a ? (a - px) / Math.max(1e-9, ax - px) : 2, fy = ay > a ? (a - py) / Math.max(1e-9, ay - py) : 2;
+          const plane = fx <= fy ? 0 : 1, f = Math.max(0, Math.min(1, Math.min(fx, fy)));
+          lossS[i] = (j - 1 + f) * ds; lossPlane[i] = plane;
+          lossSide[i] = Math.sign(plane === 0 ? x[i] : y[i]);
+          if (plane === 0) lostX++; else lostY++;
+          lossHist[Math.min(N, Math.max(0, Math.floor(lossS[i])))]++;
+        }
+      }
+      const [sx, sy, n] = stats(j);
+      sigX[j] = sx; sigY[j] = sy; aliveFrac[j] = n / nPart; Tat[j] = T;
+      if (j === nS - 1) break;
+      // thin element at this grid point
+      if (kickIdx.has(j)) {
+        const c = cfg[kickIdx.get(j)];
+        const f = P.f0 * pOf(T) / p0;
+        if (c === 'F' || c === 'D') {
+          const sgn = c === 'F' ? 1 : -1;
+          for (let i = 0; i < nPart; i++) { xp[i] -= sgn * x[i] / f; yp[i] += sgn * y[i] / f; }
+        } else if (c === 'R') {
+          const pr = pOf(T) / pOf(T + P.dT);
+          for (let i = 0; i < nPart; i++) { xp[i] *= pr; yp[i] *= pr; }
+          T += P.dT;
+        }
+      }
+      // linear space-charge kick over this step (generalised perveance falls as (beta*gamma)^-3)
+      if (P.K0 > 0 && n > 0) {
+        const K = P.K0 * Math.pow(bg0 / bgOf(T), 3) * (n / nPart);
+        const sxe = Math.max(sx, 0.02), sye = Math.max(sy, 0.02);
+        const kx = K * ds / (2 * sxe * (sxe + sye)), ky = K * ds / (2 * sye * (sxe + sye));
+        for (let i = 0; i < nPart; i++) if (alive[i]) { xp[i] += kx * x[i]; yp[i] += ky * y[i]; }
+      }
+      if (inB[j]) {
+        if (!Tbend) { // set up the bend once, at the energy the beam has when it enters
+          Tbend = T; Breq = pOf(T) / 299.792458 / rho; // tesla needed for the design turn
+          delta = 1 - (P.B || 0) / Breq;              // >0: too little field, beam drifts outward
+          turn = P.bendDeg * (P.B || 0) / Breq;
+        }
+        const ph = ds / rho, c = Math.cos(ph), sn = Math.sin(ph), st = P.steer || 1;
+        for (let i = 0; i < nPart; i++) {
+          const x0 = x[i], xp0 = xp[i];
+          x[i] = x0 * c + rho * xp0 * sn + st * rho * delta * (1 - c);
+          xp[i] = -x0 * sn / rho + xp0 * c + st * delta * sn;
+          y[i] += yp[i] * ds;
+        }
+      } else for (let i = 0; i < nPart; i++) { x[i] += xp[i] * ds; y[i] += yp[i] * ds; }
+    }
+    const n = aliveFrac[nS - 1] * nPart;
+    return { N, nPart, nS, ds, sEnd, X, Y, lossS, lossPlane, lossSide, Tat, sigX, sigY, aliveFrac,
+      transmission: aliveFrac[nS - 1], T, spotX: sigX[nS - 1], spotY: sigY[nS - 1],
+      lostX: lostX / nPart, lostY: lostY / nPart, lossHist: Array.from(lossHist, v => v / nPart), delivered: n,
+      bend: b0 >= 0 ? { b0, b1, rho, Breq, delta, Tbend, turn } : null };
+  }
+  return { M, pOf, betaOf, bgOf, simulate, SUB };
+})();
+if (typeof module !== 'undefined') module.exports = PHYS;
+(() => {
+'use strict';
+// ---------- constants ----------
+const CV = { bg0:'#090e2a', bg1:'#141c4d', dot:'rgba(140,160,255,0.10)', pipe:'#4152a3', pipeFill:'rgba(90,110,220,0.07)',
+  f:'#39c5ff', d:'#ff5aa5', rf:'#ffb340', dip:'#a98bff', heat:'255,107,61', beam:'143,245,255', label:'rgba(205,214,255,0.62)',
+  src:'#5ff2d2', target:'#e4d9ff', ghost:'rgba(160,175,255,0.16)' };
+const BEAM = { sig0:0.08, sigp:0.15, T0:10, f0:0.8, dT:5, a:1, steer:5, bendDeg:90 };
+const K0MAX = 0.06, NPART = 2000, BMAX = 1.0, BSTEP = 0.002;
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const TOOLS = {
+  F:{ name:'F quad', desc:'F quadrupole: squeezes the beam sideways and stretches it up and down.', color:'f' },
+  D:{ name:'D quad', desc:'D quadrupole: squeezes the beam up and down and stretches it sideways.', color:'d' },
+  R:{ name:'RF cavity', desc:'RF cavity: gives every proton a 5 MeV push. It does not focus.', color:'rf' },
+  X:{ name:'Remove', desc:'Remove: tap a slot to empty it.', color:'muted' }
+};
+const pct = v => Math.round(v * 100);
+const LEVELS = [
+  { id:1, name:'First light', N:8, tools:['F','D'],
+    brief:'Your ion source fires a beam of protons. Left alone, the beam spreads out and crashes into the pipe. Place magnets so most of it reaches the target.',
+    goals:[
+      { text:'Get 90% of the beam to the target', test:r => r.tr >= 0.90, live:r => pct(r.tr) + '%' },
+      { text:'Get 97% to the target', test:r => r.tr >= 0.97, live:r => pct(r.tr) + '%' },
+      { text:'Get 90% using 6 magnets or fewer', test:r => r.tr >= 0.90 && r.mags <= 6, live:r => r.mags + ' magnets' } ],
+    win:'That alternating pattern has a name: a FODO lattice (focus, gap, defocus, gap). Alternating-gradient focusing was worked out in 1952, and it holds the beam together in nearly every large accelerator built since, including the LHC.' },
+  { id:2, name:'Faster', N:10, tools:['F','D','R'],
+    brief:'Now speed it up. RF cavities push the protons to higher energy, but every slot a cavity takes is one less magnet.',
+    goals:[
+      { text:'Reach 25 MeV with 90% delivered', test:r => r.T >= 25 && r.tr >= 0.90, live:r => r.T + ' MeV, ' + pct(r.tr) + '%' },
+      { text:'Reach 25 MeV with 97% delivered', test:r => r.T >= 25 && r.tr >= 0.97, live:r => pct(r.tr) + '%' },
+      { text:'Reach 30 MeV with 90% delivered', test:r => r.T >= 30 && r.tr >= 0.90, live:r => r.T + ' MeV' } ],
+    win:'As the protons speed up they get stiffer, so each magnet bends them a little less. At the same time every push shrinks the beam slightly. Accelerator designers juggle both effects in every machine.' },
+  { id:4, name:'Around the corner', N:10, tools:['F','D','R'], fixed:{ 4:'B', 5:'B' }, bend:true,
+    brief:'The target is around a corner. The purple dipole magnet can turn the beam, but only with the right field. Set the dial, then keep the beam focused through the turn.',
+    goals:[
+      { text:'Turn the beam 90° with 90% delivered', test:r => r.tr >= 0.90, live:r => r.turn.toFixed(1) + '°, ' + pct(r.tr) + '%' },
+      { text:'Get 97% around the corner', test:r => r.tr >= 0.97, live:r => pct(r.tr) + '%',
+        tip:'An accelerated beam is a smaller beam.' },
+      { text:'Turn a 20 MeV beam with 90% delivered', test:r => r.Tb >= 20 && r.tr >= 0.90, live:r => r.Tb + ' MeV at the corner',
+        tip:'Faster protons are stiffer, so the dipole will need more field.' } ],
+    win:'The field you needed depends on the beam\u2019s momentum, its magnetic rigidity. Faster protons are stiffer and take more field to turn, which is why the LHC needs superconducting dipoles of about 8 tesla to steer its 6.8 TeV protons.' },
+  { id:3, name:'Workshop', N:12, tools:['F','D','R'], current:true, sandbox:true,
+    brief:'Twelve slots, every part, and a beam current dial. Build whatever you like, then chase the stars.',
+    goals:[
+      { text:'Reach 40 MeV with 90% delivered', test:r => r.T >= 40 && r.tr >= 0.90, live:r => r.T + ' MeV, ' + pct(r.tr) + '%' },
+      { text:'At full current, reach 25 MeV with 78% delivered', test:r => r.cur >= 0.995 && r.T >= 25 && r.tr >= 0.78, live:r => r.cur >= 0.995 ? r.T + ' MeV, ' + pct(r.tr) + '%' : 'current ' + pct(r.cur) + '%' },
+      { text:'Reach 50 MeV with 90% delivered', test:r => r.T >= 50 && r.tr >= 0.90, live:r => r.T + ' MeV, ' + pct(r.tr) + '%' } ],
+    win:'' }
+];
+const STAR = (on, color) => `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.6l2.5 5.4 5.9.7-4.4 4 1.2 5.8L10 14.6l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7z" fill="${on ? color : 'none'}" stroke="${color}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+const ICON = {
+  F:`<svg viewBox="0 0 34 26"><rect x="10" y="1" width="14" height="7" rx="2" fill="currentColor"/><rect x="10" y="18" width="14" height="7" rx="2" fill="currentColor"/><path d="M17 10.5l-3 -2.2h6zM17 15.5l-3 2.2h6z" fill="currentColor" opacity=".7"/><path d="M2 13h30" stroke="currentColor" stroke-width="1.2" opacity=".5"/></svg>`,
+  D:`<svg viewBox="0 0 34 26"><rect x="10" y="1" width="14" height="7" rx="2" fill="currentColor"/><rect x="10" y="18" width="14" height="7" rx="2" fill="currentColor"/><path d="M17 8.8l-3 2.2h6zM17 17.2l-3 -2.2h6z" fill="currentColor" opacity=".7"/><path d="M2 13h30" stroke="currentColor" stroke-width="1.2" opacity=".5"/></svg>`,
+  R:`<svg viewBox="0 0 34 26"><rect x="8" y="2" width="18" height="22" rx="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M2 13h30" stroke="currentColor" stroke-width="1.2" opacity=".5"/><path d="M14 13h6M18 10.5l2.5 2.5-2.5 2.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>`,
+  X:`<svg viewBox="0 0 34 26"><path d="M11 6l12 14M23 6L11 20" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`
+};
+
+// ---------- state ----------
+const STORE = 'beamline-v1';
+let save = { stars:{}, builds:{}, level:1, current:0, field:{} };
+try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.stars) save = Object.assign(save, s); } catch (e) {}
+if (!save.field) save.field = {};
+const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(save)); } catch (e) {} };
+
+let level, cfg, sim, res, tool = 'F', current = 0, field = 0, showEnv = true;
+let hintSlots = [], cursor = -1, hover = -1, pulses = [];
+const live = [], sparks = [];
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cvB = $('cvBase'), cvT = $('cvTop');
+const bctx = cvB.getContext('2d'), tctx = cvT.getContext('2d');
+const cache = document.createElement('canvas'), cctx = cache.getContext('2d');
+let W = 0, H = 0, dpr = 1, geo = null, sprites = [];
+const levelNum = l => LEVELS.indexOf(l) + 1;
+const isFixed = k => !!(level.fixed && level.fixed[k]);
+
+// ---------- UI builders ----------
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim(); }
+function stars(id) { return save.stars[id] || [false, false, false]; }
+function renderNav() {
+  $('levels').innerHTML = LEVELS.map(l => {
+    const st = stars(l.id);
+    return `<button data-l="${l.id}" aria-current="${level && level.id === l.id}"><span class="n">${levelNum(l)}</span>${l.name}<span class="mini" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map(s => STAR(s, css('rf'))).join('')}</span></button>`;
+  }).join('');
+  $('levels').querySelectorAll('button').forEach(b => b.onclick = () => setLevel(+b.dataset.l));
+}
+function renderTools() {
+  $('tools').innerHTML = ['F', 'D', 'R', 'X'].map(k => {
+    const ok = k === 'X' || level.tools.includes(k);
+    const col = k === 'X' ? 'var(--muted)' : `var(--${TOOLS[k].color})`;
+    return `<button class="tool" data-t="${k}" style="--tc:${col}" aria-pressed="${tool === k}" ${ok ? '' : 'disabled'}>
+      <span style="color:${col}">${ICON[k]}</span>${TOOLS[k].name}${ok ? '' : '<span class="lock">Unlocks in level 2</span>'}</button>`;
+  }).join('');
+  $('tools').querySelectorAll('.tool').forEach(b => b.onclick = () => { tool = b.dataset.t; renderTools(); });
+  $('toolDesc').textContent = TOOLS[tool].desc;
+}
+function renderGoals() {
+  const st = stars(level.id);
+  $('goals').innerHTML = level.goals.map((g, i) => {
+    const met = g.test(res);
+    return `<li class="${met ? 'met' : ''}">${STAR(st[i], css('rf'))}<span>${g.text}</span><span class="live">${met ? 'Done' : g.live(res)}</span></li>`;
+  }).join('');
+}
+
+// ---------- level + sim ----------
+function setLevel(id) {
+  level = LEVELS.find(l => l.id === id) || LEVELS[0];
+  const b = save.builds[level.id];
+  cfg = (b && b.length === level.N) ? b.split('') : Array(level.N).fill('-');
+  for (let k = 0; k < level.N; k++) { if (isFixed(k)) cfg[k] = level.fixed[k]; else if (cfg[k] === 'B') cfg[k] = '-'; }
+  if (tool !== 'X' && !level.tools.includes(tool)) tool = 'F';
+  current = level.current ? (save.current || 0) : 0;
+  $('current').value = Math.round(current * 100); curLabel();
+  $('currentBox').classList.toggle('show', !!level.current);
+  field = level.bend ? (save.field[level.id] || 0) : 0;
+  $('bField').value = field;
+  $('dial').classList.toggle('show', !!level.bend);
+  save.level = level.id; persist();
+  $('lvTitle').textContent = `Level ${levelNum(level)}: ${level.name}`;
+  $('lvBrief').textContent = level.brief;
+  $('banner').classList.remove('show');
+  live.length = 0; sparks.length = 0; pulses.length = 0; cursor = -1; hover = -1;
+  renderNav(); renderTools();
+  layout(); recompute(true);
+  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, cvT.width, cvT.height);
+}
+function recompute(silent) {
+  sim = PHYS.simulate(cfg.join(''), { ...BEAM, K0: level.current ? current * K0MAX : 0, B: field }, NPART, 7);
+  res = { tr: sim.transmission, T: Math.round(sim.T), mags: cfg.filter(c => c === 'F' || c === 'D').length,
+          rf: cfg.filter(c => c === 'R').length, cur: current,
+          turn: sim.bend ? sim.bend.turn : 0, Tb: sim.bend ? Math.round(sim.bend.Tbend) : 0 };
+  const d = $('rDel'); d.textContent = pct(res.tr) + '%'; d.className = res.tr >= 0.9 ? 'ok' : (res.tr < 0.5 ? 'bad' : '');
+  $('rE').textContent = res.T + ' MeV';
+  const v3 = $('rV');
+  if (level.bend) {
+    v3.textContent = res.turn.toFixed(1) + '\u00b0'; $('rVl').textContent = 'turn at the corner';
+    v3.className = Math.abs(res.turn - 90) <= 1 ? 'ok' : (Math.abs(res.turn - 90) > 4 ? 'bad' : '');
+    $('bVal').textContent = field.toFixed(3) + ' T';
+    $('bNote').textContent = res.Tb > BEAM.T0
+      ? `Your beam reaches the corner at ${res.Tb} MeV. Aim for a 90\u00b0 turn.`
+      : 'Aim for a 90\u00b0 turn. Slide to set the field, then fine-tune with the buttons.';
+  } else {
+    v3.textContent = (PHYS.betaOf(sim.T) * 100).toFixed(1) + '%'; $('rVl').textContent = 'of light speed'; v3.className = '';
+  }
+  const st = stars(level.id).slice(), fresh = [];
+  level.goals.forEach((g, i) => { if (!st[i] && g.test(res)) { st[i] = true; fresh.push(i); } });
+  if (fresh.length) { save.stars[level.id] = st; persist(); renderNav(); }
+  renderGoals();
+  $('hint').innerHTML = makeHint();
+  drawStatic();
+  if (fresh.length && !silent) celebrate(fresh);
+}
+function celebrate(fresh) {
+  const passedNow = fresh.includes(0) && !level.sandbox;
+  const st = stars(level.id);
+  $('bTitle').innerHTML = (passedNow ? 'Level complete ' : fresh.length > 1 ? 'New stars ' : 'New star ') +
+    `<span class="mini" style="display:inline-flex;gap:2px">${st.map(s => STAR(s, css('rf'))).join('')}</span>`;
+  $('bText').textContent = passedNow && level.win ? level.win : fresh.map(i => level.goals[i].text).join('. ') + '.';
+  const next = LEVELS[LEVELS.indexOf(level) + 1];
+  $('bNext').style.display = next ? '' : 'none';
+  if (next) $('bNext').textContent = next.sandbox ? 'Open the workshop' : 'Next level';
+  const b = $('banner'); b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+  if (!reduceMotion) burst();
+}
+
+// ---------- hints ----------
+function slotList(a) { return a.length === 1 ? `slot ${a[0] + 1}` : `slots ${a[0] + 1} to ${a[a.length - 1] + 1}`; }
+const lc = t => t.charAt(0).toLowerCase() + t.slice(1);
+function makeHint() {
+  hintSlots = [];
+  const st = stars(level.id);
+  const bend = sim.bend, b0 = bend ? bend.b0 : -1;
+  // focusing elements in order; the dipole squeezes sideways, so it counts as an F
+  const q = [];
+  cfg.forEach((c, i) => { if (c === 'F' || c === 'D') q.push({ c, i }); else if (c === 'B' && i === b0) q.push({ c:'F', i, dip:true }); });
+  const hasF = cfg.includes('F'), hasD = cfg.includes('D');
+  const needE = level.id === 2 ? 25 : level.id === 3 ? 40 : 0;
+  if (bend) {
+    const t = bend.turn, early = bend.Tbend > BEAM.T0;
+    if (field < 0.01) { hintSlots = [bend.b0, bend.b1 - 1];
+      return '<b>The beam flies straight into the wall at the corner.</b> Turn up the dipole field until the beam turns 90\u00b0.'; }
+    if (t < 87) { hintSlots = [bend.b0, bend.b1 - 1];
+      return early ? `<b>Not turning enough.</b> You sped the protons up before the corner, so they are stiffer now. Give the dipole more field.`
+                   : `<b>Not turning enough.</b> The beam only turns ${t.toFixed(0)}\u00b0 and hits the outer wall. Turn the field up.`; }
+    if (t > 93) { hintSlots = [bend.b0, bend.b1 - 1];
+      return `<b>Too much field.</b> The beam turns ${t.toFixed(0)}\u00b0 and curls into the inner wall. Turn the field down a little.`; }
+  }
+  if (!q.filter(o => !o.dip).length && !res.rf) return bend
+    ? '<b>Good steering.</b> Now the beam needs focusing. Place quads before and after the corner.'
+    : '<b>Watch the sparks.</b> Without magnets the beam spreads out like a flashlight and hits the walls. Pick a part below, then tap a slot on the beamline to place it.';
+  if (level.goals.every((g, i) => st[i])) return level.sandbox
+    ? '<b>All stars earned.</b> Try the extremes: how much energy can you reach, and what happens at full current?'
+    : '<b>All three stars.</b> Try the next level, or see if you can find a different pattern that also works.';
+  if (level.goals[0].test(res)) {
+    const next = level.goals.findIndex((g, i) => !st[i] && !g.test(res));
+    if (next >= 0) { const g = level.goals[next]; return `<b>Goal reached.</b> Next star: ${lc(g.text)}.` + (g.tip ? ' ' + g.tip : ''); }
+  }
+  if (bend && Math.abs(bend.turn - 90) > 1 && res.tr < 0.9)
+    return `<b>Close.</b> The beam turns ${bend.turn.toFixed(1)}\u00b0. Fine-tune the field with the + and \u2212 buttons.`;
+  if (level.current && current > 0.5 && res.tr < 0.8 && q.length >= 3)
+    return '<b>Heavy traffic.</b> At high current the protons push each other apart, so the beam swells between magnets. Faster protons push each other less, which is one more reason to accelerate.';
+  if (needE && res.tr >= 0.9 && res.T < needE) {
+    const k = Math.ceil((needE - res.T) / BEAM.dT);
+    return `<b>Beam is clean, now add energy.</b> You are at ${res.T} MeV. Each RF cavity adds ${BEAM.dT} MeV, so you need ${k} more.`;
+  }
+  const lx = sim.lostX, ly = sim.lostY;
+  if (!bend && hasF && !hasD && ly > lx) return '<b>Look at the side view.</b> F quads squeeze the beam sideways (top view) but stretch it up and down. Add some D quads, which do the opposite.';
+  if (hasD && !hasF && lx > ly && !bend) return '<b>Look at the top view.</b> D quads squeeze the beam up and down but stretch it sideways. Add some F quads, which do the opposite.';
+  for (let k = 1; k < q.length; k++) if (q[k].c === q[k - 1].c) {
+    const a = q[k - 1], b = q[k];
+    if (a.dip || b.dip) {
+      const other = a.dip ? b : a; hintSlots = [other.i];
+      return `<b>Bending magnets focus too.</b> The dipole squeezes the beam sideways, much like an F quad, so the F quad in ${slotList([other.i])} doubles up. Try a D quad next to the corner.`;
+    }
+    hintSlots = [a.i, b.i];
+    return `<b>Two ${b.c} quads in a row</b> (highlighted) both stretch the beam ${b.c === 'F' ? 'up and down' : 'sideways'}. Try alternating F and D.`;
+  }
+  let best = [], run = [];
+  for (let i = 0; i < cfg.length; i++) {
+    if (cfg[i] === 'F' || cfg[i] === 'D' || cfg[i] === 'B') { if (run.length > best.length) best = run; run = []; } else run.push(i);
+  }
+  if (run.length > best.length) best = run;
+  if (best.length >= 2) {
+    hintSlots = best;
+    return `<b>No focusing in ${slotList(best)}</b> (highlighted), so the beam spreads out there.` + (best.some(i => cfg[i] === 'R') ? ' RF cavities speed the beam up but do not focus it.' : '');
+  }
+  const h = sim.lossHist, k = h.indexOf(Math.max(...h));
+  if (k >= 0 && k < cfg.length && h[k] > 0.01) {
+    hintSlots = [k];
+    return `<b>Most losses happen near ${slotList([k])}</b> (highlighted). Look where the wall glows, then try changing a magnet nearby.`;
+  }
+  return '<b>Almost there.</b> Small changes matter. Try swapping a magnet for its opposite and watch the delivered number.';
+}
+
+// ---------- geometry ----------
+// A view maps beam coordinates (s along the line in metres, u across in pipe radii) to screen pixels.
+function lineView(x0, x1, yc, hp, sMin, sMax) {
+  const k = (x1 - x0) / (sMax - sMin);
+  return { kind:'line', k, hp, map:(s, u) => [x0 + (s - sMin) * k, yc - u * hp], ang:() => 0, letterU:1 };
+}
+function floorView(ox, oy, k, hp, b0, b1, rho) {
+  const path = s => {
+    if (s < b0) return [s, 0, 1, 0, 0, -1];
+    if (s < b1) { const p = (s - b0) / rho, c = Math.cos(p), n = Math.sin(p); return [b0 + rho * n, rho * (1 - c), c, n, n, -c]; }
+    return [b0 + rho, rho + (s - b1), 0, 1, 1, 0];
+  };
+  return { kind:'floor', k, hp, letterU:-1, b0, b1, rho, cx: ox + k * b0, cy: oy - k * rho,
+    map:(s, u) => { const [px, py, , , nx, ny] = path(s); return [ox + k * px + u * hp * nx, oy - k * py - u * hp * ny]; },
+    ang:s => { const [, , tx, ty] = path(s); return Math.atan2(-ty, tx); } };
+}
+function layout() {
+  const w = Math.round(stage.getBoundingClientRect().width);
+  if (!w) return;
+  W = w; dpr = Math.min(2, window.devicePixelRatio || 1);
+  const N = level.N, sMin = -0.95, sEnd = N + 0.5, sMax = sEnd + 0.6, padT = 26;
+  geo = { N, sMin, sMax, sEnd, padT, labels:[], inset:null };
+  if (!level.bend) {
+    H = Math.round(Math.max(272, Math.min(430, W * 0.48)));
+    const gap = 26, laneH = (H - padT - 12 - gap) / 2, hp = laneH * 0.3;
+    const y0 = padT + laneH / 2, y1 = padT + laneH + gap + laneH / 2;
+    geo.views = [lineView(0, W, y0, hp, sMin, sMax), lineView(0, W, y1, hp, sMin, sMax)];
+    geo.labels = [['Seen from above', 12, padT / 2 + 2, 'left'], ['Seen from the side', 12, padT + laneH + 13, 'left'], ['Target', W - 10, padT / 2 + 2, 'right']];
+  } else {
+    const b0 = cfg.indexOf('B'), b1 = cfg.lastIndexOf('B') + 1, rho = (b1 - b0) / (Math.PI / 2);
+    const xMin = sMin, xMax = b0 + rho + 0.8, yMin = -0.8, yMax = rho + (sEnd - b1) + 0.45;
+    const fw = xMax - xMin, fh = yMax - yMin, wide = W >= 720;
+    let k, ox, oy, side;
+    if (wide) {
+      k = Math.min((W * 0.5 - 20) / fw, 440 / fh);
+      H = Math.round(padT + fh * k + 14);
+      ox = 10 - xMin * k; oy = padT + yMax * k;
+      const xL = 10 + fw * k + 30, laneH = Math.min(150, H * 0.42), yc = padT + (H - padT) / 2 + 6;
+      side = lineView(xL + 6, W - 18, yc, laneH * 0.3, sMin, sMax);
+      geo.inset = [xL - 4, yc - laneH / 2 - 30, W - 8 - xL, laneH + 40];
+      geo.labels = [['Seen from above', 12, padT / 2 + 2, 'left'], ['Seen from the side, straightened out', xL + 8, yc - laneH / 2 - 15, 'left']];
+    } else {
+      // the side view sits as an inset in the empty elbow of the floor plan
+      k = Math.min((W - 16) / fw, 420 / fh);
+      H = Math.round(padT + fh * k + 10);
+      ox = (W - fw * k) / 2 - xMin * k; oy = padT + yMax * k;
+      const hpF = k * 0.36, xl = 8, xr = ox + k * (b0 + rho) - hpF * 1.5 - 12;
+      const yt = padT + 14, yb = oy - hpF * 1.6 - 14, laneH = Math.min(104, (yb - yt - 34) * 0.9);
+      const yc = (yt + yb) / 2 + 12;
+      side = lineView(xl + 4, xr - 6, yc, laneH * 0.3, sMin, sMax);
+      geo.inset = [xl, yc - laneH / 2 - 28, xr - xl, laneH + 38];
+      geo.labels = [['Seen from above', 12, padT / 2 + 2, 'left'], [xr - xl < 320 ? 'Side view, straightened out' : 'Seen from the side, straightened out', xl + 8, yc - laneH / 2 - 14, 'left']];
+    }
+    geo.views = [floorView(ox, oy, k, k * 0.36, b0, b1, rho), side];
+    const [tx, ty] = geo.views[0].map(sEnd + 0.32, 0);
+    geo.labels.push(['Target', tx, ty, 'center']);
+  }
+  stage.style.height = H + 'px';
+  for (const c of [cvB, cvT, cache]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.style.width = W + 'px'; c.style.height = H + 'px'; }
+  sprites = makeSprites();
+  drawStatic();
+}
+function lerpColor(t) {
+  const stops = [[95, 242, 255], [235, 250, 255], [255, 205, 120]];
+  t = Math.max(0, Math.min(1, t)) * 2; const i = Math.min(1, Math.floor(t)), f = t - i;
+  return stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+}
+function makeSprites() {
+  const hp = Math.min(...geo.views.map(v => v.hp));
+  const out = [], R = Math.round(Math.max(4.5, Math.min(7, hp * 0.17)) * dpr);
+  for (let n = 0; n < 10; n++) {
+    const c = document.createElement('canvas'); c.width = c.height = R * 2;
+    const g = c.getContext('2d'), [r, gg, b] = lerpColor(n / 9);
+    const grad = g.createRadialGradient(R, R, 0, R, R, R);
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)'); grad.addColorStop(0.18, `rgba(${r},${gg},${b},0.85)`);
+    grad.addColorStop(0.45, `rgba(${r},${gg},${b},0.22)`); grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+    g.fillStyle = grad; g.fillRect(0, 0, R * 2, R * 2); out.push(c);
+  }
+  return out;
+}
+
+// ---------- drawing ----------
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+function at(c, v, s, fn) { const [X, Y] = v.map(s, 0); c.save(); c.translate(X, Y); c.rotate(v.ang(s)); fn(); c.restore(); }
+function strip(c, v, s0, s1, uOf, step = 0.05) { // closed band between +u(s) and -u(s)
+  c.beginPath(); let first = true;
+  for (let s = s0; s <= s1 + 1e-9; s += step) { const [X, Y] = v.map(s, uOf(s)); first ? c.moveTo(X, Y) : c.lineTo(X, Y); first = false; }
+  for (let s = s1; s >= s0 - 1e-9; s -= step) { const [X, Y] = v.map(s, -uOf(s)); c.lineTo(X, Y); }
+  c.closePath();
+}
+function wall(c, v, s0, s1, u) { c.beginPath(); for (let s = s0, f = true; s <= s1 + 1e-9; s += 0.05, f = false) { const [X, Y] = v.map(s, u); f ? c.moveTo(X, Y) : c.lineTo(X, Y); } c.stroke(); }
+function drawStatic() {
+  if (!geo || !sim) return;
+  const c = cctx, sEnd = sim.sEnd;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, CV.bg1); bg.addColorStop(1, CV.bg0);
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  c.fillStyle = CV.dot;
+  for (let x = 8; x < W; x += 16) for (let y = 8; y < H; y += 16) c.fillRect(x, y, 1, 1);
+  if (geo.inset) { const [x, y, w, h] = geo.inset; rr(c, x, y, w, h, 12); c.fillStyle = 'rgba(150,165,255,0.05)'; c.fill(); c.strokeStyle = 'rgba(150,165,255,0.16)'; c.lineWidth = 1; c.stroke(); }
+  c.font = '600 12px "Atkinson Hyperlegible", system-ui, sans-serif'; c.fillStyle = CV.label; c.textBaseline = 'middle';
+  for (const [t, x, y, al] of geo.labels) { c.textAlign = al; c.fillText(t, x, y); }
+  c.textAlign = 'left';
+  geo.views.forEach((v, L) => {
+    const { hp, k } = v;
+    c.fillStyle = CV.pipeFill; strip(c, v, -0.15, sEnd, () => 1); c.fill();
+    if (showEnv) {
+      const sig = L === 0 ? sim.sigX : sim.sigY, n = sim.nS, ds = sim.ds;
+      strip(c, v, 0, sEnd, s => Math.min(1.02, 2 * sig[Math.min(n - 1, Math.round(s / ds))]), ds);
+      c.fillStyle = `rgba(${CV.beam},0.07)`; c.fill(); c.strokeStyle = `rgba(${CV.beam},0.22)`; c.lineWidth = 1; c.stroke();
+    }
+    // dipole (drawn under the walls so the pipe shows through)
+    if (sim.bend) drawDipole(c, v, sim.bend);
+    c.strokeStyle = CV.pipe; c.lineWidth = 1.5; wall(c, v, -0.15, sEnd, 1); wall(c, v, -0.15, sEnd, -1);
+    for (let i = 0; i < geo.N; i++) {
+      const el = cfg[i], s = i + 0.5;
+      if (el === '-') at(c, v, s, () => {
+        c.setLineDash([3, 3]); c.strokeStyle = CV.ghost; c.lineWidth = 1; const w = k * 0.5;
+        rr(c, -w / 2, -hp * 1.45, w, hp * 0.34, 3); c.stroke(); rr(c, -w / 2, hp * 1.11, w, hp * 0.34, 3); c.stroke(); c.setLineDash([]);
+      });
+      else if (el === 'F' || el === 'D') drawQuad(c, v, s, el, L);
+      else if (el === 'R') drawRF(c, v, s);
+    }
+    // loss heat
+    const nb = Math.ceil((sEnd + 0.2) * 5), bins = new Float32Array(nb * 2);
+    for (let i = 0; i < sim.nPart; i++) if (sim.lossS[i] >= 0 && sim.lossPlane[i] === L)
+      bins[Math.floor(sim.lossS[i] * 5) * 2 + (sim.lossSide[i] > 0 ? 0 : 1)] += 1 / sim.nPart;
+    c.globalCompositeOperation = 'lighter';
+    for (let b = 0; b < bins.length; b++) {
+      const val = bins[b]; if (val < 0.0015) continue;
+      const [x, y] = v.map((Math.floor(b / 2) + 0.5) / 5, b % 2 ? -1 : 1);
+      const a = Math.min(0.95, 0.3 + val * 14), r = Math.min(k * 0.75, 8 + val * 420);
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${CV.heat},${a})`); g.addColorStop(1, `rgba(${CV.heat},0)`);
+      c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+    c.globalCompositeOperation = 'source-over';
+    // source
+    at(c, v, -0.45, () => {
+      const w = k * 0.74; c.shadowColor = CV.src; c.shadowBlur = 14; c.fillStyle = 'rgba(95,242,210,0.16)'; c.strokeStyle = CV.src; c.lineWidth = 1.5;
+      rr(c, -w / 2, -hp * 0.95, w, hp * 1.9, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
+      const g = c.createRadialGradient(w / 2 - 3, 0, 0, w / 2 - 3, 0, hp * 0.8);
+      g.addColorStop(0, 'rgba(200,255,240,0.9)'); g.addColorStop(1, 'rgba(95,242,210,0)');
+      c.fillStyle = g; c.fillRect(w / 2 - 3 - hp, -hp, hp * 2, hp * 2);
+    });
+    // target
+    at(c, v, sEnd, () => { c.shadowColor = CV.target; c.shadowBlur = 16; c.fillStyle = CV.target; rr(c, 0, -hp * 1.25, 5, hp * 2.5, 2.5); c.fill(); c.shadowBlur = 0; });
+  });
+  c.setTransform(1, 0, 0, 1, 0, 0);
+}
+function drawQuad(c, v, s, el, L) {
+  const { hp, k } = v, col = el === 'F' ? CV.f : CV.d, w = k * 0.56;
+  const focus = (el === 'F') === (L === 0);
+  at(c, v, s, () => {
+    c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = col; c.globalAlpha = 0.9;
+    rr(c, -w / 2, -hp * 1.48, w, hp * 0.38, 3); c.fill(); rr(c, -w / 2, hp * 1.10, w, hp * 0.38, 3); c.fill();
+    c.globalAlpha = 0.55; c.shadowBlur = 0;
+    const aw = Math.min(6, w * 0.35), ah = Math.min(5, hp * 0.18);
+    for (const sgn of [-1, 1]) {
+      const yb = sgn * hp * 0.72, dir = focus ? -sgn : sgn;
+      c.beginPath(); c.moveTo(-aw, yb - dir * ah / 2); c.lineTo(aw, yb - dir * ah / 2); c.lineTo(0, yb + dir * ah / 2); c.closePath(); c.fill();
+    }
+    c.globalAlpha = 1;
+  });
+  if (L === 0 && w >= 12) {
+    const [X, Y] = v.map(s, v.letterU * 1.29);
+    c.fillStyle = '#0a0f2c'; c.font = '700 10px "Bricolage Grotesque", system-ui, sans-serif'; c.textAlign = 'center';
+    c.fillText(el, X, Y + 1); c.textAlign = 'left';
+  }
+}
+function drawRF(c, v, s) {
+  const { hp, k } = v, w = k * 0.78;
+  at(c, v, s, () => {
+    c.shadowColor = CV.rf; c.shadowBlur = 12; c.strokeStyle = CV.rf; c.lineWidth = 2; c.fillStyle = 'rgba(255,179,64,0.10)';
+    rr(c, -w / 2, -hp * 1.48, w, hp * 2.96, Math.min(10, w * 0.35)); c.fill(); c.stroke(); c.shadowBlur = 0;
+    c.fillStyle = CV.rf; c.globalAlpha = 0.6; c.fillRect(-1, -hp * 1.48, 2, hp * 0.48); c.fillRect(-1, hp * 1.0, 2, hp * 0.48); c.globalAlpha = 1;
+  });
+}
+function drawDipole(c, v, bd) {
+  const { hp, k } = v, strength = Math.min(1, field / 0.6);
+  c.save();
+  c.shadowColor = CV.dip; c.shadowBlur = 8 + 14 * strength; c.strokeStyle = CV.dip; c.lineWidth = 2;
+  c.fillStyle = `rgba(169,139,255,${0.10 + 0.14 * strength})`;
+  if (v.kind === 'floor') {
+    const R = v.k * v.rho, r1 = R - hp * 1.5, r2 = R + hp * 1.5;
+    c.beginPath(); c.arc(v.cx, v.cy, r2, 0, Math.PI / 2); c.arc(v.cx, v.cy, r1, Math.PI / 2, 0, true); c.closePath();
+    c.fill(); c.stroke(); c.shadowBlur = 0;
+    // field lines point into the page: draw crosses, brighter with more field
+    c.strokeStyle = `rgba(214,200,255,${0.12 + 0.6 * strength})`; c.lineWidth = 1.2;
+    const m = Math.max(2.5, hp * 0.13);
+    for (const rf of [-1.25, 1.25]) for (let a = 0.12; a < Math.PI / 2; a += 0.2) {
+      const x = v.cx + (R + rf * hp) * Math.cos(a), y = v.cy + (R + rf * hp) * Math.sin(a);
+      c.beginPath(); c.moveTo(x - m, y - m); c.lineTo(x + m, y + m); c.moveTo(x + m, y - m); c.lineTo(x - m, y + m); c.stroke();
+    }
+  } else {
+    const [x0] = v.map(bd.b0 + 0.04, 0), [x1, yc] = v.map(bd.b1 - 0.04, 0);
+    rr(c, x0, yc - hp * 1.5, x1 - x0, hp * 0.42, 4); c.fill(); c.stroke();
+    rr(c, x0, yc + hp * 1.08, x1 - x0, hp * 0.42, 4); c.fill(); c.stroke();
+    c.shadowBlur = 0; c.fillStyle = '#0a0f2c'; c.font = '700 10px "Bricolage Grotesque", system-ui, sans-serif'; c.textAlign = 'center';
+    c.fillText(field.toFixed(2) + ' T', (x0 + x1) / 2, yc - hp * 1.29 + 1);
+  }
+  c.restore();
+}
+
+// ---------- animation ----------
+let acc = 0, last = performance.now(), flash = [0, 0];
+const beta0 = PHYS.betaOf(BEAM.T0);
+function addSpark(x, y, vx, vy, life, rgb, size) { sparks.push({ x, y, vx, vy, life, max: life, rgb, size }); }
+function burst() {
+  for (const v of geo.views) { const [xt, yt] = v.map(sim.sEnd, 0), a0 = v.ang(sim.sEnd);
+    for (let k = 0; k < 70; k++) { const a = a0 + Math.PI * (0.5 + Math.random()), sp = 60 + Math.random() * 220;
+      addSpark(xt, yt, Math.cos(a) * sp, Math.sin(a) * sp, 0.8 + Math.random() * 0.7, CV.beam, 1.6); } }
+}
+function slotBox(v, k, color, alpha, lw) {
+  const s = k + 0.5; bctx.strokeStyle = color; bctx.globalAlpha = alpha; bctx.lineWidth = lw;
+  at(bctx, v, s, () => { rr(bctx, -v.k * 0.47, -v.hp * 1.62, v.k * 0.94, v.hp * 3.24, 8); bctx.stroke(); });
+  bctx.globalAlpha = 1;
+}
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (geo && sim) {
+    const views = geo.views, nS = sim.nS, ds = sim.ds;
+    bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.drawImage(cache, 0, 0);
+    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.009);
+    bctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < cfg.length; k++) if (cfg[k] === 'R') for (const v of views) {
+      const [cx, cy] = v.map(k + 0.5, 0), r = v.k * 0.75;
+      const g = bctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, `rgba(255,179,64,${0.10 + 0.16 * pulse})`); g.addColorStop(1, 'rgba(255,179,64,0)');
+      bctx.fillStyle = g; bctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+    }
+    views.forEach((v, L) => {
+      flash[L] *= Math.exp(-dt * 5);
+      const [xt, yt] = v.map(sim.sEnd, 0), r = v.hp * 1.4, a = Math.min(0.8, 0.12 + flash[L] * 0.05);
+      const g = bctx.createRadialGradient(xt, yt, 0, xt, yt, r);
+      g.addColorStop(0, `rgba(228,217,255,${a})`); g.addColorStop(1, 'rgba(228,217,255,0)');
+      bctx.fillStyle = g; bctx.fillRect(xt - r, yt - r, 2 * r, 2 * r);
+    });
+    bctx.globalCompositeOperation = 'source-over';
+    for (const v of views) {
+      for (const k of hintSlots) slotBox(v, k, '#ffd27a', 0.25 + 0.35 * pulse, 1.5);
+      if (hover >= 0) slotBox(v, hover, '#ffffff', 0.35, 1.5);
+      if (cursor >= 0 && document.activeElement === cvT) slotBox(v, cursor, '#9fb0ff', 0.9, 2);
+    }
+    for (let p = pulses.length - 1; p >= 0; p--) {
+      const q = pulses[p], t = (now - q.t0) / 450; if (t >= 1) { pulses.splice(p, 1); continue; }
+      for (const v of views) { const [cx, cy] = v.map(q.k + 0.5, 0);
+        bctx.strokeStyle = q.col; bctx.globalAlpha = 1 - t; bctx.lineWidth = 2;
+        bctx.beginPath(); bctx.arc(cx, cy, v.hp * (0.6 + 1.3 * t), 0, Math.PI * 2); bctx.stroke(); }
+      bctx.globalAlpha = 1;
+    }
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.globalCompositeOperation = 'destination-out';
+    tctx.fillStyle = 'rgba(0,0,0,0.32)'; tctx.fillRect(0, 0, cvT.width, cvT.height);
+    tctx.globalCompositeOperation = 'lighter';
+    acc += dt * (reduceMotion ? 40 : 105) * Math.max(0.5, Math.min(1, W / 800));
+    while (acc >= 1 && live.length < 600) { live.push({ i: (Math.random() * NPART) | 0, s: 0 }); acc -= 1; }
+    const R = sprites[0].width / dpr, half = R / 2, Tspan = 50;
+    for (let n = live.length - 1; n >= 0; n--) {
+      const p = live[n], i = p.i;
+      const jf = Math.min(nS - 1.001, p.s / ds), j = Math.floor(jf), f = jf - j, T = sim.Tat[j];
+      p.s += dt * 2.4 * Math.pow(PHYS.betaOf(T) / beta0, 0.75);
+      const ls = sim.lossS[i];
+      if (ls >= 0 && p.s >= ls) {
+        const v = views[sim.lossPlane[i]], [x, y] = v.map(ls, sim.lossSide[i]), a = v.ang(ls);
+        for (let k = 0; k < 4; k++) { const va = 30 + Math.random() * 90, vc = (Math.random() - 0.5) * 150;
+          addSpark(x, y, va * Math.cos(a) - vc * Math.sin(a), va * Math.sin(a) + vc * Math.cos(a), 0.25 + Math.random() * 0.35, CV.heat, 1.4); }
+        live.splice(n, 1); continue;
+      }
+      if (p.s >= sim.sEnd) { flash[0] += 1; flash[1] += 1; live.splice(n, 1); continue; }
+      const o = i * nS + j, xv = sim.X[o] + (sim.X[o + 1] - sim.X[o]) * f, yv = sim.Y[o] + (sim.Y[o + 1] - sim.Y[o]) * f;
+      const spr = sprites[Math.min(9, Math.max(0, Math.round((T - BEAM.T0) / Tspan * 9)))];
+      const [ax, ay] = views[0].map(p.s, xv), [bx, by] = views[1].map(p.s, yv);
+      tctx.drawImage(spr, (ax - half) * dpr, (ay - half) * dpr, R * dpr, R * dpr);
+      tctx.drawImage(spr, (bx - half) * dpr, (by - half) * dpr, R * dpr, R * dpr);
+    }
+    for (let n = sparks.length - 1; n >= 0; n--) {
+      const s = sparks[n]; s.life -= dt; if (s.life <= 0) { sparks.splice(n, 1); continue; }
+      tctx.strokeStyle = `rgba(${s.rgb},${s.life / s.max})`; tctx.lineWidth = s.size * dpr;
+      tctx.beginPath(); tctx.moveTo(s.x * dpr, s.y * dpr); s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.97; s.vy *= 0.97;
+      tctx.lineTo(s.x * dpr, s.y * dpr); tctx.stroke();
+    }
+    tctx.globalCompositeOperation = 'source-over';
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------- input ----------
+function slotAt(clientX, clientY) {
+  const r = cvT.getBoundingClientRect(), X = clientX - r.left, Y = clientY - r.top;
+  let best = 1e9, bs = -1;
+  for (const v of geo.views) {
+    for (let s = 0; s < level.N; s += 0.05) {
+      const [px, py] = v.map(s, 0), d = Math.hypot(px - X, py - Y) / (v.hp * 1.75);
+      if (d < best) { best = d; bs = s; }
+    }
+  }
+  return best <= 1 ? Math.min(level.N - 1, Math.floor(bs)) : -1;
+}
+function setCfg(k, t) {
+  if (isFixed(k)) { if (level.bend) $('bField').focus(); return; }
+  cfg[k] = t; save.builds[level.id] = cfg.join(''); persist();
+  const colors = { F: CV.f, D: CV.d, R: CV.rf, '-': '#c8d0ff' };
+  if (!reduceMotion) pulses.push({ k, t0: performance.now(), col: colors[t] });
+  recompute();
+}
+function place(k) { if (k < 0) return; const t = tool === 'X' ? '-' : tool; setCfg(k, cfg[k] === t ? '-' : t); }
+cvT.addEventListener('pointerdown', e => { const k = slotAt(e.clientX, e.clientY); if (k >= 0) { cursor = k; place(k); } });
+cvT.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') hover = slotAt(e.clientX, e.clientY); });
+cvT.addEventListener('pointerleave', () => hover = -1);
+cvT.addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === 'ArrowRight' || k === 'ArrowLeft') { cursor = cursor < 0 ? 0 : Math.max(0, Math.min(level.N - 1, cursor + (k === 'ArrowRight' ? 1 : -1))); e.preventDefault(); }
+  else if ((k === 'Enter' || k === ' ') && cursor >= 0) { place(cursor); e.preventDefault(); }
+  else if ((k === 'Delete' || k === 'Backspace') && cursor >= 0) { setCfg(cursor, '-'); e.preventDefault(); }
+  else if (k.length === 1 && 'fdr'.includes(k.toLowerCase())) { const t = k.toUpperCase(); if (level.tools.includes(t)) { tool = t; renderTools(); } }
+});
+cvT.addEventListener('focus', () => { if (cursor < 0) cursor = 0; });
+$('clear').onclick = () => { cfg = cfg.map((c, k) => isFixed(k) ? c : '-'); save.builds[level.id] = cfg.join(''); persist(); recompute(); };
+$('envT').onchange = e => { showEnv = e.target.checked; drawStatic(); };
+let rafQ = 0;
+const soon = () => { if (!rafQ) rafQ = requestAnimationFrame(() => { rafQ = 0; recompute(); }); };
+function curLabel() { $('curLbl').textContent = current < 0.01 ? 'Off' : current < 0.4 ? 'Low' : current < 0.8 ? 'Medium' : current > 0.995 ? 'Full' : 'High'; }
+$('current').oninput = e => { if (!level.current) return; current = e.target.value / 100; save.current = current; persist(); curLabel(); soon(); };
+function setField(b) {
+  field = Math.max(0, Math.min(BMAX, Math.round(b / BSTEP) * BSTEP));
+  $('bField').value = field; save.field[level.id] = field; persist(); soon();
+}
+$('bField').oninput = e => { if (level.bend) setField(+e.target.value); };
+for (const [id, d] of [['bMinus', -BSTEP], ['bPlus', BSTEP]]) {
+  const btn = $(id); let t1 = 0, t2 = 0;
+  const stop = () => { clearTimeout(t1); clearInterval(t2); };
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); setField(field + d); stop(); t1 = setTimeout(() => { t2 = setInterval(() => setField(field + d), 70); }, 380); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setField(field + d); } });
+}
+$('bClose').onclick = () => $('banner').classList.remove('show');
+$('bNext').onclick = () => { const next = LEVELS[LEVELS.indexOf(level) + 1]; if (next) setLevel(next.id); window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); };
+new ResizeObserver(() => { const w = Math.round(stage.getBoundingClientRect().width); if (w && w !== W) layout(); }).observe(stage);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { renderNav(); renderGoals(); });
+
+setLevel(save.level || 1);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => drawStatic());
+requestAnimationFrame(frame);
+})();
+</script>
+</body></html>
