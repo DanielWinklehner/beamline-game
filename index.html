@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Beamline: build a particle accelerator</title>
+<title>Beamline</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap" rel="stylesheet">
@@ -119,6 +119,13 @@ h1 span{display:block;font-family:var(--body);font-weight:400;font-size:15px;let
 .dial-row input{flex:1;accent-color:var(--dip);height:28px}
 .btn.sq{width:44px;height:44px;padding:0;font-size:22px;line-height:1;display:grid;place-items:center;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .dial p{margin:6px 0 0;font-size:14px;color:var(--muted)}
+.pole{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:10px 0 4px;padding:12px 14px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+.pole-l{font-family:var(--display);font-weight:700;font-size:17px;margin-right:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--chip)}
+.seg button{border:0;background:transparent;padding:8px 14px;font-weight:700;cursor:pointer;min-height:44px}
+.seg button[aria-pressed="true"]{background:var(--text);color:var(--page)}
+.pole p{flex-basis:100%;margin:0;font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
 details.real{margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
 details.real summary{cursor:pointer;font-family:var(--display);font-weight:700;font-size:17px}
 details.real p,details.real li{max-width:68ch;font-size:15px}
@@ -151,19 +158,28 @@ details.real ul{padding-left:20px}
   </div>
 
   <div class="readout" aria-live="polite">
-    <div class="stat"><b id="rDel">0%</b><small>of the beam reaches the target</small></div>
-    <div class="stat"><b id="rE">10 MeV</b><small>proton energy</small></div>
+    <div class="stat"><b id="rDel">0%</b><small id="rDelL">of the beam reaches the target</small></div>
+    <div class="stat"><b id="rE">10 MeV</b><small id="rEL">proton energy</small></div>
     <div class="stat"><b id="rV">14%</b><small id="rVl">of light speed</small></div>
   </div>
 
   <div class="dial" id="dial">
-    <div class="dial-top"><label for="bField">Dipole field</label><output id="bVal">0.000 T</output></div>
+    <div class="dial-top"><label for="bField" id="dialLbl">Dipole field</label><output id="bVal">0.000 T</output></div>
     <div class="dial-row">
       <button class="btn sq" id="bMinus" aria-label="Lower the field a little">&minus;</button>
       <input type="range" id="bField" min="0" max="1" step="0.002" value="0">
       <button class="btn sq" id="bPlus" aria-label="Raise the field a little">+</button>
     </div>
     <p id="bNote"></p>
+  </div>
+
+  <div class="pole" id="poleBox" hidden>
+    <span class="pole-l" id="poleLbl">Pole shape</span>
+    <div class="seg" role="group" aria-labelledby="poleLbl">
+      <button type="button" id="poleFlat" aria-pressed="true">Flat</button>
+      <button type="button" id="poleHills" aria-pressed="false">Hills and valleys</button>
+    </div>
+    <p>Hills and valleys make the field stronger and weaker around each lap, which squeezes the beam back toward the middle of the gap.</p>
   </div>
 
   <div class="banner" id="banner" role="status">
@@ -192,7 +208,7 @@ details.real ul{padding-left:20px}
         <input type="range" id="current" min="0" max="100" step="1" value="0">
         <p>More protons per second. They repel each other, so an intense beam swells. This is called space charge.</p>
       </div>
-      <label class="switch"><input type="checkbox" id="envT" checked> Show beam outline</label>
+      <label class="switch"><input type="checkbox" id="envT" checked> <span id="envL">Show beam outline</span></label>
       <div class="row">
         <button class="btn" id="clear">Clear the line</button>
       </div>
@@ -210,7 +226,11 @@ details.real ul{padding-left:20px}
       <li>The bending magnet is a 90&deg; sector dipole. The field it needs is set by the beam's momentum (its magnetic rigidity, B&rho; = p/e), shown in real tesla for a 1.27 m bending radius. A sector dipole also focuses gently in the bend plane.</li>
       <li>The game forgives field errors far more than a real machine would. Real dipoles are matched to the beam within a few parts in ten thousand.</li>
       <li>In the workshop, beam current adds linear space charge, which weakens as the beam speeds up (it scales with 1/(&beta;&gamma;)&sup3;).</li>
-      <li>Left out for now: RF timing and bunching, energy spread (and the dispersion it causes in a bend), and nonlinear fields.</li>
+      <li>In the cyclotron, 360 protons are tracked lap by lap. Each lap they cross two gaps and gain up to 1 MeV, times the cosine of their phase. That is a generous push for a real machine, chosen so the spiral stays readable.</li>
+      <li>A proton laps at f = qB/(2&pi;&gamma;m). The frequency only stays constant if the average field rises in step with &gamma;, so the shims have to lift the field toward the edge (an isochronous cyclotron). Any mismatch makes the phase slip a little every lap. Every bunch gets its push at the same moment, so in a well-shaped field the bunches line up like the hand of a clock. When the timing slips, that line curls into a spiral arm. The animation shows only a few bunches so you can follow them, where a real cyclotron carries one in every RF period.</li>
+      <li>A field that rises with radius pushes protons out of the midplane. Hills and valleys add flutter, and the vertical tune follows Thomas's result, &nu;<sub>z</sub>&sup2; &asymp; &minus;k + F&sup2;, for straight sectors. The flat pole falls off slightly toward the edge, which gives weak focusing until you shim against it.</li>
+      <li>The cyclotron uses the orbit-averaged field. The central region, radial betatron motion, resonances and the extraction system are left out, and the scalloped orbits are drawn for looks.</li>
+      <li>Left out for now: RF bunching in the linac, energy spread (and the dispersion it causes in a bend), and nonlinear fields.</li>
     </ul>
   </details>
 </div>
@@ -325,7 +345,113 @@ const PHYS = (() => {
       lostX: lostX / nPart, lostY: lostY / nPart, lossHist: Array.from(lossHist, v => v / nPart), delivered: n,
       bend: b0 >= 0 ? { b0, b1, rho, Breq, delta, Tbend, turn } : null };
   }
-  return { M, pOf, betaOf, bgOf, simulate, SUB };
+
+  // ---------- cyclotron (smooth approximation, one turn per step) ----------
+  // Average field: base pole that falls slightly with radius, times (1 + S(r)) from the shims.
+  // S(r) is a monotone cubic through the shim knots. Hills add flutter F^2 (Thomas focusing).
+  const FMHZ = 299.792458 * 299.792458 / (2 * Math.PI * M); // revolution MHz per tesla, nonrelativistic proton
+  function monotone(xs, ys) {
+    const n = xs.length, d = [], m = new Array(n).fill(0);
+    for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+    // Fritsch-Carlson limiter
+    for (let i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+      if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+    }
+    return x => {
+      if (x <= xs[0]) return [ys[0], m[0]];
+      if (x >= xs[n - 1]) return [ys[n - 1], 0];
+      let i = 0; while (x > xs[i + 1]) i++;
+      const h = xs[i + 1] - xs[i], t = (x - xs[i]) / h, t2 = t * t, t3 = t2 * t;
+      const y = (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h * m[i + 1];
+      const dy = ((6 * t2 - 6 * t) * ys[i] + (3 * t2 - 4 * t + 1) * h * m[i] + (-6 * t2 + 6 * t) * ys[i + 1] + (3 * t2 - 2 * t) * h * m[i + 1]) / h;
+      return [y, dy];
+    };
+  }
+  function cycField(C) {
+    const S = monotone([0, ...C.rS], [0, ...C.shims]);
+    const dr = 0.0025, n = Math.ceil(C.Rpole / dr) + 1;
+    const r = new Float64Array(n), B = new Float64Array(n), k = new Float64Array(n), p = new Float64Array(n), nu2 = new Float64Array(n), Sv = new Float64Array(n);
+    for (let j = 0; j < n; j++) {
+      const x = j * dr, q = x * x / (C.r1 * C.r1);
+      const base = C.Bc * Math.pow(1 + q, -C.n0 / 2), kb = -C.n0 * q / (1 + q);
+      const [s, ds] = S(x);
+      r[j] = x; Sv[j] = s; B[j] = base * (1 + s); k[j] = kb + x * ds / (1 + s);
+      p[j] = 299.792458 * B[j] * x;
+      const F2 = C.hills ? C.F2 * (1 - Math.exp(-(x * x) / (C.rF * C.rF))) : 0;
+      nu2[j] = F2 - k[j];
+    }
+    return { dr, n, r, B, k, p, nu2, S: Sv };
+  }
+  function cyclotron(C, nPart = 400, seed = 11) {
+    const fld = cycField(C), { dr, n } = fld;
+    const at = (arr, x) => { const u = Math.min(n - 1.001, Math.max(0, x / dr)), j = Math.floor(u), f = u - j; return arr[j] + (arr[j + 1] - arr[j]) * f; };
+    const rOfP = pp => { // invert p(r), monotone
+      if (pp <= 0) return 0; let lo = 0, hi = n - 1; if (pp >= fld.p[hi]) return fld.r[hi] + (pp - fld.p[hi]) / (fld.p[hi] - fld.p[hi - 1]) * dr;
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (fld.p[mid] < pp) lo = mid; else hi = mid; }
+      return fld.r[lo] + (pp - fld.p[lo]) / (fld.p[hi] - fld.p[lo]) * dr;
+    };
+    const maxT = C.maxTurns, Q = maxT * 4 + 1;
+    const R = new Float32Array(nPart * Q), Z = new Float32Array(nPart * Q), PH = new Float32Array(nPart * (maxT + 1));
+    const TT = new Float32Array(nPart * (maxT + 1));
+    const nTurn = new Int16Array(nPart), status = new Int8Array(nPart), Tend = new Float32Array(nPart), lossQ = new Float32Array(nPart), lossSide = new Int8Array(nPart);
+    const rnd = rng(seed);
+    for (let i = 0; i < nPart; i++) {
+      let [g1, g2] = gaussPair(rnd); const [g3] = gaussPair(rnd);
+      let ph = Math.max(-2.5, Math.min(2.5, g1)) * C.sigPh, z = g2 * C.sigZ, zp = g3 * C.sigZp, T = C.T0;
+      let p = pOf(T), r = rOfP(p);
+      R[i * Q] = r; Z[i * Q] = z; PH[i * (maxT + 1)] = ph; TT[i * (maxT + 1)] = T;
+      let st = 3, t = 0;
+      for (t = 0; t < maxT; t++) {
+        const Tn = T + C.dE * Math.cos(ph * Math.PI / 180);
+        const pn = pOf(Tn), rn = rOfP(pn);
+        const rm = rOfP(pOf(0.5 * (T + Tn))), gm = 1 + 0.5 * (T + Tn) / M;
+        const frev = FMHZ * at(fld.B, rm) / gm;
+        const nu2 = at(fld.nu2, rm), Lq = Math.PI * 2 * rm / 4, K = nu2 / (rm * rm);
+        let c, sn, s2; // quarter-turn transfer
+        if (K > 1e-9) { const w = Math.sqrt(K); c = Math.cos(w * Lq); sn = Math.sin(w * Lq) / w; s2 = -w * Math.sin(w * Lq); }
+        else if (K < -1e-9) { const w = Math.sqrt(-K); c = Math.cosh(w * Lq); sn = Math.sinh(w * Lq) / w; s2 = w * Math.sinh(w * Lq); }
+        else { c = 1; sn = Lq; s2 = 0; }
+        let hit = false;
+        for (let qq = 1; qq <= 4; qq++) {
+          const z0 = z; z = c * z0 + sn * zp; zp = s2 * z0 + c * zp;
+          const idx = i * Q + t * 4 + qq;
+          R[idx] = r + (rn - r) * qq / 4; Z[idx] = z;
+          if (Math.abs(z) > C.gap) { hit = true; lossQ[i] = t * 4 + qq - 1 + (C.gap - Math.abs(Z[idx - 1])) / Math.max(1e-9, Math.abs(z) - Math.abs(Z[idx - 1])); lossSide[i] = Math.sign(z); break; }
+        }
+        zp *= p / pn; // adiabatic damping
+        T = Tn; p = pn; r = rn;
+        ph = ph + 360 * (C.frf / frev - 1); // phase slip over this turn (h = 1)
+        PH[i * (maxT + 1) + t + 1] = ph; TT[i * (maxT + 1) + t + 1] = T;
+        if (hit) { st = 2; t++; break; }
+        if (r >= C.Rext) { st = 0; t++; break; }
+        if (Math.abs(ph) >= 90) { st = 1; t++; break; }
+      }
+      nTurn[i] = t; status[i] = st; Tend[i] = T;
+    }
+    const sorted = Array.from(Tend).sort((a, b) => a - b);
+    const ext = status.reduce((a, s) => a + (s === 0), 0) / nPart;
+    const counts = [0, 0, 0, 0]; for (let i = 0; i < nPart; i++) counts[status[i]]++;
+    const turns90 = Array.from(nTurn).sort((a, b) => a - b)[Math.floor(0.9 * (nPart - 1))];
+    return { fld, nPart, maxT, Q, R, Z, PH, TT, nTurn, status, Tend, lossQ, lossSide,
+      E90: sorted[Math.floor(0.1 * nPart)], extracted: ext, frac: counts.map(c => c / nPart), turns90,
+      C };
+  }
+
+
+  // Isochronous target: for RF frequency f (MHz) the average field must rise as B = (f/FMHZ)*gamma(r),
+  // with gamma(r) = 1/sqrt(1 - (2 pi f r / c)^2). Returns the shim setting S_j that achieves it at each knot.
+  function cycTarget(C, f) {
+    return C.rS.map(r => {
+      const x = 2 * Math.PI * f * 1e6 * r / 299792458, g = 1 / Math.sqrt(1 - x * x);
+      const base = C.Bc * Math.pow(1 + r * r / (C.r1 * C.r1), -C.n0 / 2);
+      return (f / FMHZ) * g / base - 1;
+    });
+  }
+  return { M, pOf, betaOf, bgOf, simulate, SUB, cyclotron, cycField, cycTarget, FMHZ };
 })();
 if (typeof module !== 'undefined') module.exports = PHYS;
 (() => {
@@ -335,7 +461,7 @@ const CV = { bg0:'#090e2a', bg1:'#141c4d', dot:'rgba(140,160,255,0.10)', pipe:'#
   f:'#39c5ff', d:'#ff5aa5', rf:'#ffb340', dip:'#a98bff', heat:'255,107,61', beam:'143,245,255', label:'rgba(205,214,255,0.62)',
   src:'#5ff2d2', target:'#e4d9ff', ghost:'rgba(160,175,255,0.16)' };
 const BEAM = { sig0:0.08, sigp:0.15, T0:10, f0:0.8, dT:5, a:1, steer:5, bendDeg:90 };
-const K0MAX = 0.06, NPART = 2000, BMAX = 1.0, BSTEP = 0.002;
+const K0MAX = 0.06, NPART = 2000;
 const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const TOOLS = {
@@ -361,6 +487,7 @@ const LEVELS = [
       { text:'Reach 30 MeV with 90% delivered', test:r => r.T >= 30 && r.tr >= 0.90, live:r => r.T + ' MeV' } ],
     win:'As the protons speed up they get stiffer, so each magnet bends them a little less. At the same time every push shrinks the beam slightly. Accelerator designers juggle both effects in every machine.' },
   { id:4, name:'Around the corner', N:10, tools:['F','D','R'], fixed:{ 4:'B', 5:'B' }, bend:true,
+    dial:{ label:'Dipole field', min:0, max:1, step:0.002, unit:'T', digits:3, def:0 },
     brief:'The target is around a corner. The purple dipole magnet can turn the beam, but only with the right field. Set the dial, then keep the beam focused through the turn.',
     goals:[
       { text:'Turn the beam 90° with 90% delivered', test:r => r.tr >= 0.90, live:r => r.turn.toFixed(1) + '°, ' + pct(r.tr) + '%' },
@@ -369,6 +496,17 @@ const LEVELS = [
       { text:'Turn a 20 MeV beam with 90% delivered', test:r => r.Tb >= 20 && r.tr >= 0.90, live:r => r.Tb + ' MeV at the corner',
         tip:'Faster protons are stiffer, so the dipole will need more field.' } ],
     win:'The field you needed depends on the beam\u2019s momentum, its magnetic rigidity. Faster protons are stiffer and take more field to turn, which is why the LHC needs superconducting dipoles of about 8 tesla to steer its 6.8 TeV protons.' },
+  { id:5, name:'Spin cycle', kind:'cyclo', N:6, tools:[],
+    dial:{ label:'RF frequency', min:14, max:16.5, step:0.001, unit:'MHz', digits:3, def:15.9 },
+    brief:'A cyclotron bends protons into circles and pushes them each time they cross the gap between two D-shaped electrodes. Every push sends them a little wider, so they spiral out. Tune the radio frequency to match their laps, then shape the magnet to keep them in step all the way to the edge.',
+    goals:[
+      { text:'Get 90% of the beam to 10 MeV', test:r => r.E90 >= 10, live:r => Math.floor(r.E90) + ' MeV' },
+      { text:'Get 90% of the beam out at the edge', test:r => r.ext >= 0.9, live:r => pct(r.ext) + '% out',
+        note:'Out at the edge, past the limit that stopped the first cyclotrons. Raising the field toward the edge keeps every lap taking the same time even as the protons get heavier, and the hills and valleys, an idea Llewellyn Thomas published in 1938, keep the beam from drifting into the poles. Cyclotrons built this way make medical isotopes and treat cancer with proton beams.' },
+      { text:'Get 90% out, all within 20\u00b0 of the crest', test:r => r.crest >= 0.9, live:r => pct(r.crest) + '% on the crest',
+        tip:'The green band on the timing plot is the crest of the wave.',
+        note:'Riding the crest. With the field shaped just right, every proton gets nearly the full push on every lap. Real cyclotrons are shimmed to a few parts in ten thousand to get there.' } ],
+    win:'That is resonance. A slow proton takes the same time for every lap, big or small, so one steady radio frequency can push it every time it crosses the gap. Ernest Lawrence built the first cyclotron on this idea in 1931, and it was small enough to hold in one hand.' },
   { id:3, name:'Workshop', N:12, tools:['F','D','R'], current:true, sandbox:true,
     brief:'Twelve slots, every part, and a beam current dial. Build whatever you like, then chase the stars.',
     goals:[
@@ -387,9 +525,9 @@ const ICON = {
 
 // ---------- state ----------
 const STORE = 'beamline-v1';
-let save = { stars:{}, builds:{}, level:1, current:0, field:{} };
+let save = { stars:{}, builds:{}, level:1, current:0, field:{}, shims:{}, hills:{} };
 try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.stars) save = Object.assign(save, s); } catch (e) {}
-if (!save.field) save.field = {};
+for (const k of ['field', 'shims', 'hills']) if (!save[k] || typeof save[k] !== 'object') save[k] = {};
 const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(save)); } catch (e) {} };
 
 let level, cfg, sim, res, tool = 'F', current = 0, field = 0, showEnv = true;
@@ -434,26 +572,63 @@ function renderGoals() {
 // ---------- level + sim ----------
 function setLevel(id) {
   level = LEVELS.find(l => l.id === id) || LEVELS[0];
-  const b = save.builds[level.id];
-  cfg = (b && b.length === level.N) ? b.split('') : Array(level.N).fill('-');
-  for (let k = 0; k < level.N; k++) { if (isFixed(k)) cfg[k] = level.fixed[k]; else if (cfg[k] === 'B') cfg[k] = '-'; }
+  const cyc = isCyc(), b = save.builds[level.id];
+  if (cyc) cfg = [];
+  else {
+    cfg = (b && b.length === level.N) ? b.split('') : Array(level.N).fill('-');
+    for (let k = 0; k < level.N; k++) { if (isFixed(k)) cfg[k] = level.fixed[k]; else if (cfg[k] === 'B') cfg[k] = '-'; }
+  }
   if (tool !== 'X' && !level.tools.includes(tool)) tool = 'F';
   current = level.current ? (save.current || 0) : 0;
   $('current').value = Math.round(current * 100); curLabel();
   $('currentBox').classList.toggle('show', !!level.current);
-  field = level.bend ? (save.field[level.id] || 0) : 0;
-  $('bField').value = field;
-  $('dial').classList.toggle('show', !!level.bend);
+  const dl = level.dial;
+  if (dl) {
+    const sv = save.field[level.id];
+    field = typeof sv === 'number' && sv >= dl.min && sv <= dl.max ? sv : dl.def;
+    const inp = $('bField'); inp.min = dl.min; inp.max = dl.max; inp.step = dl.step; inp.value = field;
+    $('dialLbl').textContent = dl.label;
+    $('bMinus').setAttribute('aria-label', `Lower the ${dl.label.toLowerCase()} a little`);
+    $('bPlus').setAttribute('aria-label', `Raise the ${dl.label.toLowerCase()} a little`);
+  } else field = 0;
+  $('dial').classList.toggle('show', !!dl);
+  if (cyc) {
+    const sv = save.shims[level.id];
+    shims = Array.isArray(sv) && sv.length === CYC.rS.length ? sv.map(v => Math.max(0, Math.min(SHIM_MAX, +v || 0))) : CYC.rS.map(() => 0);
+    hills = !!save.hills[level.id]; renderPole(); dragJ = -1; rfClock = 0; nextSpawn = 0;
+  }
+  $('poleBox').hidden = !cyc; $('tools').hidden = cyc;
+  $('clear').textContent = cyc ? 'Remove all shims' : 'Clear the line';
+  $('envL').textContent = cyc ? 'Show orbit history' : 'Show beam outline';
+  cvT.setAttribute('aria-label', cyc ? 'Cyclotron. Use left and right arrows to choose a shim, and up and down arrows to raise or lower it.'
+    : 'Beamline. Use left and right arrows to choose a slot, Enter to place the selected part, Delete to empty it.');
   save.level = level.id; persist();
   $('lvTitle').textContent = `Level ${levelNum(level)}: ${level.name}`;
   $('lvBrief').textContent = level.brief;
   $('banner').classList.remove('show');
   live.length = 0; sparks.length = 0; pulses.length = 0; cursor = -1; hover = -1;
   renderNav(); renderTools();
+  if (cyc) $('toolDesc').textContent = 'Drag the round handles on the shim plot to make the magnetic field stronger at that radius.';
   layout(); recompute(true);
+  if (cyc) prefillCyclo();
   tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, cvT.width, cvT.height);
 }
 function recompute(silent) {
+  const dl = level.dial;
+  if (dl) $('bVal').textContent = field.toFixed(dl.digits) + ' ' + dl.unit;
+  if (isCyc()) {
+    sim = PHYS.cyclotron(cycConfig(), NCYC, 11);
+    res = cycStats();
+    for (const p of live) { p.n = 0; p.g = null; }
+    const d = $('rDel'); d.textContent = Math.floor(res.E90) + ' MeV'; d.className = res.E90 >= 10 ? 'ok' : (res.E90 < 5 ? 'bad' : '');
+    $('rDelL').textContent = 'reached by 90% of the beam';
+    const e = $('rE'); e.textContent = pct(res.ext) + '%'; e.className = res.ext >= 0.9 ? 'ok' : '';
+    $('rEL').textContent = 'of the beam out at the edge';
+    const v3 = $('rV'); v3.textContent = (PHYS.betaOf(res.E90) * 100).toFixed(1) + '%'; v3.className = ''; $('rVl').textContent = 'of light speed';
+    $('bNote').textContent = `The dees flip ${field.toFixed(2)} million times a second. Protons near the center go around ${(PHYS.FMHZ * CYC.Bc).toFixed(2)} million times a second.`;
+    finishRecompute(silent); return;
+  }
+  $('rDelL').textContent = 'of the beam reaches the target'; $('rEL').textContent = 'proton energy'; $('rE').className = '';
   sim = PHYS.simulate(cfg.join(''), { ...BEAM, K0: level.current ? current * K0MAX : 0, B: field }, NPART, 7);
   res = { tr: sim.transmission, T: Math.round(sim.T), mags: cfg.filter(c => c === 'F' || c === 'D').length,
           rf: cfg.filter(c => c === 'R').length, cur: current,
@@ -464,13 +639,15 @@ function recompute(silent) {
   if (level.bend) {
     v3.textContent = res.turn.toFixed(1) + '\u00b0'; $('rVl').textContent = 'turn at the corner';
     v3.className = Math.abs(res.turn - 90) <= 1 ? 'ok' : (Math.abs(res.turn - 90) > 4 ? 'bad' : '');
-    $('bVal').textContent = field.toFixed(3) + ' T';
     $('bNote').textContent = res.Tb > BEAM.T0
       ? `Your beam reaches the corner at ${res.Tb} MeV. Aim for a 90\u00b0 turn.`
       : 'Aim for a 90\u00b0 turn. Slide to set the field, then fine-tune with the buttons.';
   } else {
     v3.textContent = (PHYS.betaOf(sim.T) * 100).toFixed(1) + '%'; $('rVl').textContent = 'of light speed'; v3.className = '';
   }
+  finishRecompute(silent);
+}
+function finishRecompute(silent) {
   const st = stars(level.id).slice(), fresh = [];
   level.goals.forEach((g, i) => { if (!st[i] && g.test(res)) { st[i] = true; fresh.push(i); } });
   if (fresh.length) { save.stars[level.id] = st; persist(); renderNav(); }
@@ -484,7 +661,8 @@ function celebrate(fresh) {
   const st = stars(level.id);
   $('bTitle').innerHTML = (passedNow ? 'Level complete ' : fresh.length > 1 ? 'New stars ' : 'New star ') +
     `<span class="mini" style="display:inline-flex;gap:2px">${st.map(s => STAR(s, css('rf'))).join('')}</span>`;
-  $('bText').textContent = passedNow && level.win ? level.win : fresh.map(i => level.goals[i].text).join('. ') + '.';
+  const notes = fresh.map(i => level.goals[i].note).filter(Boolean);
+  $('bText').textContent = passedNow && level.win ? level.win : notes.length ? notes[notes.length - 1] : fresh.map(i => level.goals[i].text).join('. ') + '.';
   const next = LEVELS[LEVELS.indexOf(level) + 1];
   $('bNext').style.display = next ? '' : 'none';
   if (next) $('bNext').textContent = next.sandbox ? 'Open the workshop' : 'Next level';
@@ -496,6 +674,7 @@ function celebrate(fresh) {
 function slotList(a) { return a.length === 1 ? `slot ${a[0] + 1}` : `slots ${a[0] + 1} to ${a[a.length - 1] + 1}`; }
 const lc = t => t.charAt(0).toLowerCase() + t.slice(1);
 function makeHint() {
+  if (isCyc()) return cycloHint();
   hintSlots = [];
   const st = stars(level.id);
   const bend = sim.bend, b0 = bend ? bend.b0 : -1;
@@ -581,6 +760,7 @@ function layout() {
   const w = Math.round(stage.getBoundingClientRect().width);
   if (!w) return;
   W = w; dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (isCyc()) { layoutCyclo(); sizeCanvases(); return; }
   const N = level.N, sMin = -0.95, sEnd = N + 0.5, sMax = sEnd + 0.6, padT = 26;
   geo = { N, sMin, sMax, sEnd, padT, labels:[], inset:null };
   if (!level.bend) {
@@ -618,6 +798,9 @@ function layout() {
     const [tx, ty] = geo.views[0].map(sEnd + 0.32, 0);
     geo.labels.push(['Target', tx, ty, 'center']);
   }
+  sizeCanvases();
+}
+function sizeCanvases() {
   stage.style.height = H + 'px';
   for (const c of [cvB, cvT, cache]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.style.width = W + 'px'; c.style.height = H + 'px'; }
   sprites = makeSprites();
@@ -629,7 +812,7 @@ function lerpColor(t) {
   return stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
 }
 function makeSprites() {
-  const hp = Math.min(...geo.views.map(v => v.hp));
+  const hp = geo.cyc ? 33 : Math.min(...geo.views.map(v => v.hp));
   const out = [], R = Math.round(Math.max(4.5, Math.min(7, hp * 0.17)) * dpr);
   for (let n = 0; n < 10; n++) {
     const c = document.createElement('canvas'); c.width = c.height = R * 2;
@@ -638,6 +821,18 @@ function makeSprites() {
     grad.addColorStop(0, 'rgba(255,255,255,0.95)'); grad.addColorStop(0.18, `rgba(${r},${gg},${b},0.85)`);
     grad.addColorStop(0.45, `rgba(${r},${gg},${b},0.22)`); grad.addColorStop(1, `rgba(${r},${gg},${b},0)`);
     g.fillStyle = grad; g.fillRect(0, 0, R * 2, R * 2); out.push(c);
+  }
+  { // out-of-step protons fade in hot orange
+    const c = document.createElement('canvas'); c.width = c.height = R * 2;
+    const g = c.getContext('2d'), grad = g.createRadialGradient(R, R, 0, R, R, R);
+    grad.addColorStop(0, 'rgba(255,220,190,0.9)'); grad.addColorStop(0.2, `rgba(${CV.heat},0.8)`); grad.addColorStop(1, `rgba(${CV.heat},0)`);
+    g.fillStyle = grad; g.fillRect(0, 0, R * 2, R * 2); out.push(c);
+  }
+  { // amber glow for the push at the gap
+    const G = 32, c = document.createElement('canvas'); c.width = c.height = G * 2;
+    const g = c.getContext('2d'), grad = g.createRadialGradient(G, G, 0, G, G, G);
+    grad.addColorStop(0, 'rgba(255,236,200,0.95)'); grad.addColorStop(0.25, 'rgba(255,179,64,0.6)'); grad.addColorStop(1, 'rgba(255,179,64,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, G * 2, G * 2); out.push(c);
   }
   return out;
 }
@@ -654,6 +849,8 @@ function strip(c, v, s0, s1, uOf, step = 0.05) { // closed band between +u(s) an
 function wall(c, v, s0, s1, u) { c.beginPath(); for (let s = s0, f = true; s <= s1 + 1e-9; s += 0.05, f = false) { const [X, Y] = v.map(s, u); f ? c.moveTo(X, Y) : c.lineTo(X, Y); } c.stroke(); }
 function drawStatic() {
   if (!geo || !sim) return;
+  if (geo.cyc) { if (sim.R) drawStaticCyclo(); return; }
+  if (!sim.X) return;
   const c = cctx, sEnd = sim.sEnd;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, CV.bg1); bg.addColorStop(1, CV.bg0);
@@ -770,6 +967,9 @@ let acc = 0, last = performance.now(), flash = [0, 0];
 const beta0 = PHYS.betaOf(BEAM.T0);
 function addSpark(x, y, vx, vy, life, rgb, size) { sparks.push({ x, y, vx, vy, life, max: life, rgb, size }); }
 function burst() {
+  if (geo.cyc) { const [xt, yt] = geo.tgt;
+    for (let k = 0; k < 90; k++) { const a = Math.random() * 2 * Math.PI, sp = 60 + Math.random() * 220; addSpark(xt, yt, Math.cos(a) * sp, Math.sin(a) * sp, 0.8 + Math.random() * 0.7, CV.beam, 1.6); }
+    return; }
   for (const v of geo.views) { const [xt, yt] = v.map(sim.sEnd, 0), a0 = v.ang(sim.sEnd);
     for (let k = 0; k < 70; k++) { const a = a0 + Math.PI * (0.5 + Math.random()), sp = 60 + Math.random() * 220;
       addSpark(xt, yt, Math.cos(a) * sp, Math.sin(a) * sp, 0.8 + Math.random() * 0.7, CV.beam, 1.6); } }
@@ -781,7 +981,8 @@ function slotBox(v, k, color, alpha, lw) {
 }
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (geo && sim) {
+  if (geo && sim && geo.cyc) { if (sim.R) frameCyclo(dt, now); }
+  else if (geo && sim && sim.X) {
     const views = geo.views, nS = sim.nS, ds = sim.ds;
     bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.drawImage(cache, 0, 0);
     bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -815,7 +1016,7 @@ function frame(now) {
     }
     tctx.setTransform(1, 0, 0, 1, 0, 0);
     tctx.globalCompositeOperation = 'destination-out';
-    tctx.fillStyle = 'rgba(0,0,0,0.32)'; tctx.fillRect(0, 0, cvT.width, cvT.height);
+    tctx.fillStyle = `rgba(0,0,0,${1 - Math.pow(0.68, dt * 60)})`; tctx.fillRect(0, 0, cvT.width, cvT.height);
     tctx.globalCompositeOperation = 'lighter';
     acc += dt * (reduceMotion ? 40 : 105) * Math.max(0.5, Math.min(1, W / 800));
     while (acc >= 1 && live.length < 600) { live.push({ i: (Math.random() * NPART) | 0, s: 0 }); acc -= 1; }
@@ -849,6 +1050,366 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+// ---------- cyclotron level ----------
+const CYC = { Bc:1.0, n0:0.02, r1:0.25, rS:[0.2, 0.4, 0.6, 0.8, 1.0, 1.2], F2:0.18, rF:0.3, dE:1.0, T0:0.2,
+  Rext:1.15, Rpole:1.3, Ryoke:1.46, gap:0.02, sigPh:5, sigZ:0.002, sigZp:0.0015, maxTurns:160 };
+const NCYC = 360, SHIM_MAX = 0.15, SHIM_STEP = 0.0025, CREST = 20, TRF = 0.6, BUNCH_EVERY = 8, BUNCH_N = 5, TH_EXT = 10 * Math.PI / 180, CH_LEN = 1.05;
+let shims = CYC.rS.map(() => 0), hills = false, dragJ = -1, rfClock = 0, nextSpawn = 0, cycRef = 0;
+const glows = [];
+function isCyc() { return !!(level && level.kind === 'cyclo'); }
+function cycConfig() { return { ...CYC, shims: shims.slice(), hills, frf: field }; }
+function cycStats() {
+  const s = sim, M1 = s.maxT + 1; let crest = 0, b = 1e9;
+  for (let i = 0; i < s.nPart; i++) {
+    const a0 = Math.abs(s.PH[i * M1]); if (a0 < b) { b = a0; cycRef = i; }
+    if (s.status[i] !== 0) continue;
+    let m = 0; for (let t = 0; t <= s.nTurn[i]; t++) m = Math.max(m, Math.abs(s.PH[i * M1 + t]));
+    if (m <= CREST) crest++;
+  }
+  return { E90: s.E90, ext: s.frac[0], crest: crest / s.nPart, lostPh: s.frac[1], lostV: s.frac[2] };
+}
+function setShim(j, v) {
+  v = Math.max(0, Math.min(SHIM_MAX, Math.round(v / SHIM_STEP) * SHIM_STEP));
+  v = +v.toFixed(5);
+  if (v === shims[j]) return;
+  shims[j] = v; save.shims[level.id] = shims.slice(); persist(); soon();
+}
+function renderPole() {
+  $('poleFlat').setAttribute('aria-pressed', String(!hills));
+  $('poleHills').setAttribute('aria-pressed', String(hills));
+}
+
+// ----- hints: tracked phase says where, the isochronous target says which knob -----
+function cycAdvice(thr) {
+  const s = sim, M1 = s.maxT + 1, i = cycRef, nT = s.nTurn[i];
+  for (let t = 1; t <= nT; t++) {
+    const ph = s.PH[i * M1 + t];
+    if (Math.abs(ph) <= thr) continue;
+    const rx = s.R[i * s.Q + Math.min(4 * t, 4 * nT)], late = ph > 0, sg = late ? 1 : -1;
+    const e0 = field / (PHYS.FMHZ * CYC.Bc) - 1, tgt = PHYS.cycTarget(CYC, field);
+    let best = { j: -1, late, score: sg * e0 * 1.5 };
+    for (let j = 0; j < CYC.rS.length; j++) {
+      if (CYC.rS[j] > rx + 0.12) break;
+      const d = sg * (tgt[j] - shims[j]); if (d > best.score) best = { j, late, score: d };
+    }
+    if (best.score <= 0) { let j = 0; for (let k = 0; k < CYC.rS.length; k++) if (Math.abs(CYC.rS[k] - rx) < Math.abs(CYC.rS[j] - rx)) j = k; best = { j, late }; }
+    if (best.j >= 0 && !late && shims[best.j] <= 0) best = { j: -1, late };
+    if (best.j >= 0 && late && shims[best.j] >= SHIM_MAX) best = { j: -1, late };
+    return best;
+  }
+  return null;
+}
+function steepKnot() {
+  const s = sim, rs = [];
+  for (let i = 0; i < s.nPart; i++) if (s.status[i] === 2) rs.push(s.R[i * s.Q + Math.floor(s.lossQ[i])]);
+  if (!rs.length) return -1;
+  rs.sort((a, b) => a - b);
+  const rl = rs[rs.length >> 1], tgt = PHYS.cycTarget(CYC, field);
+  let j = -1, m = -1e9;
+  for (let k = 0; k < CYC.rS.length; k++) { if (Math.abs(CYC.rS[k] - rl) > 0.25) continue; const d = shims[k] - tgt[k]; if (d > m) { m = d; j = k; } }
+  return j;
+}
+function cycloHint() {
+  hintSlots = [];
+  const st = stars(level.id), f0 = PHYS.FMHZ * CYC.Bc, e0 = field / f0 - 1, fr = sim.frac, ring = j => `ring ${j + 1}`;
+  if (level.goals.every((g, i) => st[i])) return '<b>All three stars.</b> Real cyclotrons are shimmed until the average field is right to a few parts in ten thousand. See how flat you can make the timing line, or switch back to a flat pole and watch what happens.';
+  if (res.E90 < 4 && Math.abs(e0) > 0.006) return e0 > 0
+    ? `<b>The pushes come too often.</b> The dees flip faster than the protons go around, so the protons reach the gap late and fall out of step (the timing line shoots up). Lower the frequency toward ${f0.toFixed(2)} MHz.`
+    : `<b>The pushes come too slowly.</b> The protons reach the gap early and fall out of step (the timing line dives). Raise the frequency toward ${f0.toFixed(2)} MHz.`;
+  if (fr[2] > 0.1 && fr[2] >= fr[1]) {
+    if (!hills) return '<b>Protons are hitting the poles</b> (side view). A field that gets stronger toward the edge pushes protons up and down, out of the gap. Real cyclotrons fix this with hills and valleys on the magnet pole. Switch the pole shape below.';
+    const j = steepKnot();
+    if (j >= 0) { hintSlots = [j]; return `<b>Too steep near ${ring(j)}</b> (highlighted). The field rises so fast there that even the hills cannot keep the beam in the gap. Lower that handle a little.`; }
+  }
+  if (!st[0] && res.E90 < 10) return '<b>Almost in tune.</b> The protons start on time but drift late as they spiral out. Try a slightly lower frequency, so they start a little early and stay near the crest for longer.';
+  if (shims.every(v => v === 0)) return '<b>Stuck below 30 MeV?</b> This is the limit the first cyclotrons ran into. Fast protons get heavier (relativity), so each lap takes a little longer and they fall behind the pushes. Drag the shim handles up toward the edge to make the field stronger there.';
+  const a = cycAdvice(res.ext >= 0.9 ? 10 : 45);
+  if (a) {
+    if (a.j < 0) return a.late ? '<b>Running late from the start.</b> Lower the frequency a little.' : '<b>Running early from the start.</b> Raise the frequency a little.';
+    hintSlots = [a.j];
+    return a.late ? `<b>The protons fall behind around ${ring(a.j)}</b> (highlighted), so the timing line climbs there. Raise that handle a little.`
+                  : `<b>The protons run ahead around ${ring(a.j)}</b> (highlighted), so the timing line drops there. Lower that handle a little.`;
+  }
+  const next = level.goals.findIndex((g, i) => !st[i] && !g.test(res));
+  if (next >= 0) { const g = level.goals[next]; return `<b>Close.</b> Next star: ${lc(g.text)}.` + (g.tip ? ' ' + g.tip : ''); }
+  return '<b>Nice and flat.</b> Keep the timing line inside the green band all the way to the edge.';
+}
+
+// ----- geometry -----
+function layoutCyclo() {
+  const padT = 26, lab = 22, wide = W >= 720, strips = [];
+  let D, cx, cy, x0, x1, lx, y;
+  if (wide) {
+    D = Math.min(480, Math.round(W * 0.48));
+    cx = 12 + D / 2; cy = padT + D / 2; lx = 12 + D + 26; x0 = lx + 44; x1 = W - 16;
+    const hs = (D - 3 * lab - 2 * 8 - 16) / 3; y = padT;
+    for (let k = 0; k < 3; k++) { strips.push({ y0: y + lab, h: hs }); y += lab + hs + 8; }
+    H = Math.round(Math.max(padT + D + 8, y + 16));
+  } else {
+    D = Math.min(W - 16, 370);
+    cx = W / 2; cy = padT + D / 2; lx = 12; x0 = 50; x1 = W - 14;
+    const hs = [92, 104, 76]; y = padT + D + 8;
+    for (let k = 0; k < 3; k++) { strips.push({ y0: y + lab, h: hs[k] }); y += lab + hs[k] + 8; }
+    H = Math.round(y + 12);
+  }
+  const kp = (D / 2 - 4) / CYC.Ryoke;
+  geo = { cyc: true, cx, cy, D, kp, x0, x1, lx, strips, padT, wide };
+  geo.xr = r => x0 + r / CYC.Rpole * (x1 - x0);
+  const sp = strips[0], ss = strips[1], sz = strips[2];
+  geo.yPh = ph => sp.y0 + sp.h / 2 - Math.max(-100, Math.min(100, ph)) / 100 * (sp.h / 2 - 2);
+  geo.yS = v => ss.y0 + ss.h - 10 - v / SHIM_MAX * (ss.h - 22);
+  geo.sOfY = Y => (ss.y0 + ss.h - 10 - Y) / (ss.h - 22) * SHIM_MAX;
+  geo.yZ = z => sz.y0 + sz.h / 2 - z / CYC.gap * (sz.h / 2 - 9);
+  const S0 = [CYC.Rext * Math.cos(TH_EXT), CYC.Rext * Math.sin(TH_EXT)], dir = [-Math.sin(TH_EXT), Math.cos(TH_EXT)];
+  geo.S0m = S0; geo.dir = dir;
+  geo.tgt = [cx + kp * (S0[0] + CH_LEN * dir[0]), cy - kp * (S0[1] + CH_LEN * dir[1])];
+}
+function topXY(r, th) { // hills scallop the orbit: tighter on the hills, straighter in the valleys
+  const rr_ = hills ? r * (1 - 0.03 * (1 - Math.exp(-r * r / 0.09)) * Math.cos(4 * (th - Math.PI / 4))) : r;
+  return [geo.cx + geo.kp * rr_ * Math.cos(th), geo.cy - geo.kp * rr_ * Math.sin(th)];
+}
+function deePath(c, side) {
+  const { cx, cy, kp } = geo, R = kp * 1.2, th = Math.acos(0.035 / 1.2);
+  c.beginPath();
+  if (side > 0) c.arc(cx, cy, R, -th, th); else c.arc(cx, cy, R, Math.PI - th, Math.PI + th);
+  c.closePath();
+}
+function panel(c, s, x0, x1) { rr(c, x0 - 6, s.y0 - 2, x1 - x0 + 12, s.h + 4, 8); c.fillStyle = 'rgba(150,165,255,0.05)'; c.fill(); c.strokeStyle = 'rgba(150,165,255,0.15)'; c.lineWidth = 1; c.stroke(); }
+
+// ----- static layer -----
+function drawStaticCyclo() {
+  const c = cctx, s = sim, { cx, cy, kp, x0, x1, lx, strips, xr } = geo, Q = s.Q, M1 = s.maxT + 1;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, CV.bg1); bg.addColorStop(1, CV.bg0);
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+  c.fillStyle = CV.dot; for (let x = 8; x < W; x += 16) for (let y = 8; y < H; y += 16) c.fillRect(x, y, 1, 1);
+  const txt = (t, x, y, al = 'left', col = CV.label, f = '600 12px') => { c.font = f + ' "Atkinson Hyperlegible", system-ui, sans-serif'; c.fillStyle = col; c.textAlign = al; c.textBaseline = 'middle'; c.fillText(t, x, y); };
+  txt('Seen from above', 12, geo.padT / 2 + 2);
+  // yoke and pole
+  c.beginPath(); c.arc(cx, cy, kp * CYC.Ryoke, 0, 2 * Math.PI); c.fillStyle = 'rgba(60,75,150,0.22)'; c.fill();
+  c.strokeStyle = 'rgba(120,140,230,0.30)'; c.lineWidth = 1; c.stroke();
+  const pg = c.createRadialGradient(cx, cy, 0, cx, cy, kp * CYC.Rpole);
+  pg.addColorStop(0, '#222d6c'); pg.addColorStop(1, '#171f52');
+  c.beginPath(); c.arc(cx, cy, kp * CYC.Rpole, 0, 2 * Math.PI); c.fillStyle = pg; c.fill(); c.strokeStyle = CV.pipe; c.lineWidth = 1.5; c.stroke();
+  if (hills) for (let k = 0; k < 4; k++) {
+    const a = Math.PI / 4 + k * Math.PI / 2, w = 0.42;
+    c.beginPath(); c.arc(cx, cy, kp * (CYC.Rpole - 0.03), -(a + w), -(a - w)); c.arc(cx, cy, kp * 0.12, -(a - w * 0.5), -(a + w * 0.5), true); c.closePath();
+    c.fillStyle = 'rgba(160,178,255,0.08)'; c.fill(); c.strokeStyle = 'rgba(170,186,255,0.18)'; c.lineWidth = 1; c.stroke();
+  }
+  // shim rings: only the ones carrying steel, drawn faintly
+  CYC.rS.forEach((r, j) => {
+    const v = shims[j] / SHIM_MAX; if (v <= 0) return;
+    c.beginPath(); c.arc(cx, cy, kp * r, 0, 2 * Math.PI);
+    c.lineWidth = 1 + 1.5 * v; c.strokeStyle = `rgba(214,222,255,${0.05 + 0.14 * v})`; c.stroke();
+  });
+  // extraction: septum, channel and target
+  const toS = (x, y) => [cx + kp * x, cy - kp * y], [sx, sy] = toS(...geo.S0m), [tx, ty] = geo.tgt, nx = Math.cos(TH_EXT) * 0.04, ny = Math.sin(TH_EXT) * 0.04;
+  c.beginPath(); c.arc(cx, cy, kp * (CYC.Rext + 0.03), -TH_EXT, -TH_EXT + 0.55); c.strokeStyle = 'rgba(228,217,255,0.75)'; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = 'rgba(160,175,255,0.45)'; c.lineWidth = 1.2;
+  for (const sg of [-1, 1]) { const [a1, b1] = toS(geo.S0m[0] + sg * nx, geo.S0m[1] + sg * ny), [a2, b2] = toS(geo.S0m[0] + sg * nx + CH_LEN * geo.dir[0], geo.S0m[1] + sg * ny + CH_LEN * geo.dir[1]); c.beginPath(); c.moveTo(a1, b1); c.lineTo(a2, b2); c.stroke(); }
+  c.save(); c.translate(tx, ty); c.rotate(-Math.atan2(geo.dir[1], geo.dir[0]) + Math.PI / 2);
+  c.shadowColor = CV.target; c.shadowBlur = 14; c.fillStyle = CV.target; rr(c, -11, -3, 22, 5, 2.5); c.fill(); c.restore();
+  txt('Target', tx + 16, ty + 1, 'left');
+  // ion source
+  const sg_ = c.createRadialGradient(cx, cy, 0, cx, cy, 10); sg_.addColorStop(0, 'rgba(200,255,240,0.95)'); sg_.addColorStop(1, 'rgba(95,242,210,0)');
+  c.fillStyle = sg_; c.fillRect(cx - 10, cy - 10, 20, 20);
+  // ---- strips ----
+  const [sp, ss, sz] = strips, sub = (i) => i % 9 === 0;
+  // timing
+  txt('Timing at the gap', lx, sp.y0 - 11, 'left', CV.label);
+  txt('green = on the crest', x1, sp.y0 - 11, 'right', 'rgba(130,236,180,0.85)', '600 11px');
+  panel(c, sp, x0, x1);
+  c.fillStyle = 'rgba(255,107,61,0.10)';
+  c.fillRect(x0, geo.yPh(100), x1 - x0, geo.yPh(90) - geo.yPh(100)); c.fillRect(x0, geo.yPh(-90), x1 - x0, geo.yPh(-100) - geo.yPh(-90));
+  c.fillStyle = 'rgba(110,235,170,0.10)'; c.fillRect(x0, geo.yPh(CREST), x1 - x0, geo.yPh(-CREST) - geo.yPh(CREST));
+  c.strokeStyle = 'rgba(130,236,180,0.35)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x0, geo.yPh(0)); c.lineTo(x1, geo.yPh(0)); c.stroke();
+  txt('late', x0 - 8, geo.yPh(62), 'right', CV.label, '600 11px'); txt('early', x0 - 8, geo.yPh(-62), 'right', CV.label, '600 11px');
+  txt('on time', x0 - 8, geo.yPh(0), 'right', 'rgba(130,236,180,0.85)', '600 10px');
+  txt('out of step', x1 - 4, geo.yPh(95), 'right', 'rgba(255,150,110,0.75)', '600 10px');
+  const xe = xr(CYC.Rext);
+  for (const st_ of [sp, ss, sz]) { c.setLineDash([3, 3]); c.strokeStyle = 'rgba(228,217,255,0.30)'; c.beginPath(); c.moveTo(xe, st_.y0); c.lineTo(xe, st_.y0 + st_.h); c.stroke(); c.setLineDash([]); }
+  if (showEnv) for (let i = 0; i < s.nPart; i++) if (sub(i)) {
+    const nT = s.nTurn[i]; c.beginPath();
+    for (let t = 0; t <= nT; t++) { const X = xr(s.R[i * Q + Math.min(4 * t, 4 * nT)]), Y = geo.yPh(s.PH[i * M1 + t]); t ? c.lineTo(X, Y) : c.moveTo(X, Y); }
+    c.strokeStyle = `rgba(${CV.beam},0.16)`; c.lineWidth = 1; c.stroke();
+  }
+  // shims
+  txt('Shims: drag up for a stronger field', lx, ss.y0 - 11, 'left', CV.label);
+  panel(c, ss, x0, x1);
+  for (const v of [0.05, 0.10, 0.15]) { const y = geo.yS(v); c.setLineDash([2, 4]); c.strokeStyle = 'rgba(170,186,255,0.18)'; c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.setLineDash([]); txt(`+${Math.round(v * 100)}%`, x0 - 8, y, 'right', CV.label, '600 11px'); }
+  txt('0', x0 - 8, geo.yS(0), 'right', CV.label, '600 11px');
+  const fl = s.fld;
+  c.beginPath(); c.moveTo(xr(0), geo.yS(0));
+  for (let j = 0; j < fl.n; j += 2) c.lineTo(xr(fl.r[j]), geo.yS(fl.S[j]));
+  c.lineTo(xr(CYC.Rpole), geo.yS(0)); c.closePath();
+  c.fillStyle = 'rgba(214,222,255,0.08)'; c.fill();
+  c.beginPath(); for (let j = 0; j < fl.n; j += 2) { const X = xr(fl.r[j]), Y = geo.yS(fl.S[j]); j ? c.lineTo(X, Y) : c.moveTo(X, Y); }
+  c.strokeStyle = 'rgba(214,222,255,0.6)'; c.lineWidth = 1.6; c.stroke();
+  CYC.rS.forEach((r, j) => {
+    const X = xr(r), Y = geo.yS(shims[j]);
+    c.beginPath(); c.arc(X, Y, 10, 0, 2 * Math.PI); c.fillStyle = '#e6eaff'; c.fill(); c.strokeStyle = '#0a0f2c'; c.lineWidth = 2; c.stroke();
+    txt(String(j + 1), X, Y + 0.5, 'center', '#0a0f2c', '700 11px');
+  });
+  // side view
+  txt('Seen from the side, unrolled', lx, sz.y0 - 11, 'left', CV.label);
+  panel(c, sz, x0, x1);
+  c.strokeStyle = CV.pipe; c.lineWidth = 1.5;
+  for (const sg of [1, -1]) { c.beginPath(); c.moveTo(x0, geo.yZ(sg * CYC.gap)); c.lineTo(x1, geo.yZ(sg * CYC.gap)); c.stroke(); }
+  txt('pole', x0 - 8, geo.yZ(CYC.gap), 'right', CV.label, '600 11px'); txt('pole', x0 - 8, geo.yZ(-CYC.gap), 'right', CV.label, '600 11px');
+  if (showEnv) for (let i = 0; i < s.nPart; i++) if (sub(i + 4)) {
+    const end = s.status[i] === 2 ? Math.floor(s.lossQ[i]) : 4 * s.nTurn[i]; c.beginPath();
+    for (let q = 0; q <= end; q++) { const X = xr(s.R[i * Q + q]), Y = geo.yZ(s.Z[i * Q + q]); q ? c.lineTo(X, Y) : c.moveTo(X, Y); }
+    c.strokeStyle = `rgba(${CV.beam},0.14)`; c.lineWidth = 1; c.stroke();
+  }
+  // where protons hit the poles
+  const nb = 52, bins = new Float32Array(nb * 2);
+  for (let i = 0; i < s.nPart; i++) if (s.status[i] === 2) { const r = s.R[i * Q + Math.floor(s.lossQ[i])]; bins[Math.min(nb - 1, Math.floor(r / CYC.Rpole * nb)) * 2 + (s.lossSide[i] > 0 ? 0 : 1)] += 1 / s.nPart; }
+  c.globalCompositeOperation = 'lighter';
+  for (let b = 0; b < bins.length; b++) {
+    const v = bins[b]; if (v < 0.002) continue;
+    const x = xr((Math.floor(b / 2) + 0.5) / nb * CYC.Rpole), y = geo.yZ((b % 2 ? -1 : 1) * CYC.gap), a = Math.min(0.95, 0.3 + v * 10), r = Math.min(26, 7 + v * 120);
+    const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${CV.heat},${a})`); g.addColorStop(1, `rgba(${CV.heat},0)`);
+    c.fillStyle = g; c.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  c.globalCompositeOperation = 'source-over';
+  const yt = sz.y0 + sz.h + 11;
+  txt('center', xr(0), yt, 'left', CV.label, '600 11px'); txt('0.5 m', xr(0.5), yt, 'center', CV.label, '600 11px');
+  txt('1 m', xr(1.0), yt, 'center', CV.label, '600 11px'); txt('edge', xe + 4, yt, 'left', 'rgba(228,217,255,0.8)', '600 11px');
+  c.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+// ----- animation -----
+function haloS(j, color, alpha, lw) {
+  const X = geo.xr(CYC.rS[j]), Y = geo.yS(shims[j]);
+  bctx.strokeStyle = color; bctx.globalAlpha = alpha; bctx.lineWidth = lw;
+  bctx.beginPath(); bctx.arc(X, Y, 15, 0, 2 * Math.PI); bctx.stroke();
+  bctx.beginPath(); bctx.arc(geo.cx, geo.cy, geo.kp * CYC.rS[j], 0, 2 * Math.PI); bctx.stroke();
+  const a = -0.72 * Math.PI, lx = geo.cx + geo.kp * CYC.rS[j] * Math.cos(a), ly = geo.cy - geo.kp * CYC.rS[j] * Math.sin(a);
+  bctx.fillStyle = color; bctx.font = '700 11px "Atkinson Hyperlegible", system-ui, sans-serif'; bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+  bctx.fillText('ring ' + (j + 1), lx, ly);
+  bctx.globalAlpha = 1;
+}
+// a few bunches, so each one can be followed; a real cyclotron fills every RF period
+function spawnBunch(base) {
+  const s = sim, M1 = s.maxT + 1, out = [];
+  for (let k = 0; k < BUNCH_N; k++) { const i = (Math.random() * s.nPart) | 0; out.push({ i, t0: base + s.PH[i * M1] / 360, n: 0, lead: k === 0, g: null }); }
+  return out;
+}
+function prefillCyclo() { // start with the machine already running
+  const s = sim, M1 = s.maxT + 1;
+  live.length = 0; glows.length = 0; nextSpawn = rfClock;
+  for (let k = 1; k <= 14; k++) for (const p of spawnBunch(rfClock - k * BUNCH_EVERY)) {
+    const i = p.i, o = i * M1, nT = s.nTurn[i], a = rfClock - p.t0;
+    const end = s.status[i] === 2 ? s.lossQ[i] / 4 : nT + (s.PH[o + nT] - s.PH[o]) / 360;
+    if (a < end) live.push(p);
+  }
+}
+function frameCyclo(dt, now) {
+  const s = sim, { xr } = geo, Q = s.Q, M1 = s.maxT + 1;
+  bctx.setTransform(1, 0, 0, 1, 0, 0); bctx.drawImage(cache, 0, 0);
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  rfClock += dt / TRF * (reduceMotion ? 0.4 : 1);
+  const v = Math.cos(2 * Math.PI * rfClock), pulse = reduceMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.009);
+  bctx.globalCompositeOperation = 'lighter';
+  for (const side of [1, -1]) {
+    const a = Math.max(0, side * v); deePath(bctx, side);
+    bctx.fillStyle = `rgba(255,179,64,${0.03 + 0.07 * a})`; bctx.fill();
+    bctx.strokeStyle = `rgba(255,179,64,${0.2 + 0.6 * a})`; bctx.lineWidth = 1.4; bctx.stroke();
+  }
+  flash[0] *= Math.exp(-dt * 4);
+  { const [tx, ty] = geo.tgt, r = 28, a = Math.min(0.85, 0.12 + flash[0] * 0.04);
+    const g = bctx.createRadialGradient(tx, ty, 0, tx, ty, r); g.addColorStop(0, `rgba(228,217,255,${a})`); g.addColorStop(1, 'rgba(228,217,255,0)');
+    bctx.fillStyle = g; bctx.fillRect(tx - r, ty - r, 2 * r, 2 * r); }
+  bctx.globalCompositeOperation = 'source-over';
+  for (const j of hintSlots) haloS(j, '#ffd27a', 0.3 + 0.4 * pulse, 2);
+  if (hover >= 0 && dragJ < 0) haloS(hover, '#ffffff', 0.4, 1.5);
+  const act = dragJ >= 0 ? dragJ : (cursor >= 0 && document.activeElement === cvT ? cursor : -1);
+  if (act >= 0) {
+    haloS(act, '#9fb0ff', 0.95, 2);
+    const X = geo.xr(CYC.rS[act]), Y = geo.yS(shims[act]);
+    const t = `+${(shims[act] * 100).toFixed(2)}%`;
+    bctx.font = '700 12px "Atkinson Hyperlegible", system-ui, sans-serif'; bctx.textAlign = X > geo.x1 - 40 ? 'right' : 'center'; bctx.textBaseline = 'bottom';
+    bctx.fillStyle = '#eef1ff'; bctx.fillText(t, X > geo.x1 - 40 ? X + 10 : X, Y - 17);
+  }
+  // particles
+  tctx.setTransform(1, 0, 0, 1, 0, 0);
+  tctx.globalCompositeOperation = 'destination-out';
+  tctx.fillStyle = `rgba(0,0,0,${1 - Math.pow(0.76, dt * 60)})`; tctx.fillRect(0, 0, cvT.width, cvT.height);
+  tctx.globalCompositeOperation = 'lighter';
+  if (nextSpawn < rfClock - 3 * BUNCH_EVERY) nextSpawn = Math.ceil(rfClock);
+  while (rfClock >= nextSpawn) { if (live.length < 120) live.push(...spawnBunch(nextSpawn)); nextSpawn += BUNCH_EVERY; }
+  const Rs = sprites[0].width / dpr, half = Rs / 2, rs2 = Rs * 0.8, h2 = rs2 / 2;
+  const put = (spr, X, Y, sz = Rs, hh = half) => tctx.drawImage(spr, (X - hh) * dpr, (Y - hh) * dpr, sz * dpr, sz * dpr);
+  for (let n = live.length - 1; n >= 0; n--) {
+    const p = live[n], i = p.i, o = i * M1, nT = s.nTurn[i], a = rfClock - p.t0;
+    if (a < 0) continue;
+    const tau = k => k + (s.PH[o + k] - s.PH[o]) / 360;
+    if (p.n > nT) p.n = nT;
+    while (p.n < nT && a >= tau(p.n + 1)) p.n++;
+    const u = p.n < nT ? p.n + (a - tau(p.n)) / Math.max(0.25, tau(p.n + 1) - tau(p.n)) : nT + (a - tau(nT));
+    const st = s.status[i];
+    const qf = Math.min(4 * u, 4 * nT), j = Math.min(4 * nT - 1, Math.floor(qf)), f = qf - j;
+    const r = s.R[i * Q + j] + (s.R[i * Q + j + 1] - s.R[i * Q + j]) * f;
+    if (st === 2 && 4 * u >= s.lossQ[i]) {
+      const th = Math.PI / 2 + Math.PI / 2 * s.lossQ[i], [X, Y] = topXY(r, th), side = s.lossSide[i];
+      for (let k = 0; k < 4; k++) addSpark(X, Y, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120, 0.25 + Math.random() * 0.3, CV.heat, 1.4);
+      const zx = xr(r), zy = geo.yZ(side * CYC.gap);
+      for (let k = 0; k < 3; k++) addSpark(zx, zy, (Math.random() - 0.3) * 90, side * -Math.random() * 60, 0.25 + Math.random() * 0.3, CV.heat, 1.4);
+      live.splice(n, 1); continue;
+    }
+    const uu = Math.min(u, nT), tt = Math.min(nT - 1, Math.floor(uu)), ft = uu - tt;
+    const ph = s.PH[o + tt] + (s.PH[o + tt + 1] - s.PH[o + tt]) * ft;
+    const z = s.Z[i * Q + j] + (s.Z[i * Q + j + 1] - s.Z[i * Q + j]) * f;
+    let spr = sprites[Math.min(9, Math.round(Math.abs(ph) / 70 * 9))], X, Y, alpha = 1;
+    if (u > nT) {
+      const extra = u - nT;
+      if (st === 0) {
+        const thEnd = Math.PI / 2 + 2 * Math.PI * nT, need = (((TH_EXT - thEnd) % (2 * Math.PI)) + 4 * Math.PI) % (2 * Math.PI), go = 2 * Math.PI * extra;
+        if (go < need) [X, Y] = topXY(r, thEnd + go);
+        else {
+          const d = (go - need) * r; if (d >= CH_LEN) { flash[0] += 1; live.splice(n, 1); continue; }
+          const [ax, ay] = topXY(r, TH_EXT); X = ax + (geo.tgt[0] - ax) * d / CH_LEN; Y = ay + (geo.tgt[1] - ay) * d / CH_LEN;
+        }
+      } else {
+        alpha = 1 - extra / 1.2; if (alpha <= 0) { live.splice(n, 1); continue; }
+        spr = sprites[10]; [X, Y] = topXY(r, Math.PI / 2 + 2 * Math.PI * u);
+      }
+      tctx.globalAlpha = alpha; put(spr, X, Y); tctx.globalAlpha = 1;
+      continue;
+    }
+    [X, Y] = topXY(r, Math.PI / 2 + 2 * Math.PI * u);
+    if (p.lead) { // flash at the gap: bright when the bunch arrives on the crest, dim when it is late or early
+      const g2 = Math.floor(2 * u);
+      if (p.g !== null && g2 > p.g) { const str = Math.max(0, Math.cos(ph * Math.PI / 180)); if (str > 0.05) glows.push({ x: X, y: Y, life: 0.35, max: 0.35, str }); }
+      p.g = g2;
+    }
+    put(spr, X, Y);
+    put(spr, xr(r), geo.yPh(ph), rs2, h2);
+    put(spr, xr(r), geo.yZ(z), rs2, h2);
+  }
+  for (let n = glows.length - 1; n >= 0; n--) {
+    const gl = glows[n]; gl.life -= dt; if (gl.life <= 0) { glows.splice(n, 1); continue; }
+    const k = gl.life / gl.max, sz = (10 + 16 * gl.str) * (1.4 - 0.4 * k);
+    tctx.globalAlpha = k * (0.35 + 0.65 * gl.str); tctx.drawImage(sprites[11], (gl.x - sz / 2) * dpr, (gl.y - sz / 2) * dpr, sz * dpr, sz * dpr); tctx.globalAlpha = 1;
+  }
+  for (let n = sparks.length - 1; n >= 0; n--) {
+    const sp = sparks[n]; sp.life -= dt; if (sp.life <= 0) { sparks.splice(n, 1); continue; }
+    tctx.strokeStyle = `rgba(${sp.rgb},${sp.life / sp.max})`; tctx.lineWidth = sp.size * dpr;
+    tctx.beginPath(); tctx.moveTo(sp.x * dpr, sp.y * dpr); sp.x += sp.vx * dt; sp.y += sp.vy * dt; sp.vx *= 0.97; sp.vy *= 0.97;
+    tctx.lineTo(sp.x * dpr, sp.y * dpr); tctx.stroke();
+  }
+  tctx.globalCompositeOperation = 'source-over';
+}
+
+// ----- input -----
+function shimAt(X, Y) {
+  const ss = geo.strips[1];
+  if (Y < ss.y0 - 14 || Y > ss.y0 + ss.h + 8 || X < geo.x0 - 30 || X > geo.x1 + 12) return -1;
+  let j = 0; CYC.rS.forEach((r, k) => { if (Math.abs(geo.xr(r) - X) < Math.abs(geo.xr(CYC.rS[j]) - X)) j = k; });
+  return j;
+}
+function localXY(e) { const r = cvT.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+
 // ---------- input ----------
 function slotAt(clientX, clientY) {
   const r = cvT.getBoundingClientRect(), X = clientX - r.left, Y = clientY - r.top;
@@ -869,35 +1430,65 @@ function setCfg(k, t) {
   recompute();
 }
 function place(k) { if (k < 0) return; const t = tool === 'X' ? '-' : tool; setCfg(k, cfg[k] === t ? '-' : t); }
-cvT.addEventListener('pointerdown', e => { const k = slotAt(e.clientX, e.clientY); if (k >= 0) { cursor = k; place(k); } });
-cvT.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') hover = slotAt(e.clientX, e.clientY); });
+cvT.addEventListener('pointerdown', e => {
+  if (isCyc()) {
+    const [X, Y] = localXY(e), j = shimAt(X, Y);
+    if (j >= 0) { dragJ = j; cursor = j; try { cvT.setPointerCapture(e.pointerId); } catch (_) {} setShim(j, geo.sOfY(Y)); }
+    return;
+  }
+  const k = slotAt(e.clientX, e.clientY); if (k >= 0) { cursor = k; place(k); }
+});
+cvT.addEventListener('pointermove', e => {
+  if (isCyc()) { const [X, Y] = localXY(e); if (dragJ >= 0) setShim(dragJ, geo.sOfY(Y)); else if (e.pointerType === 'mouse') hover = shimAt(X, Y); return; }
+  if (e.pointerType === 'mouse') hover = slotAt(e.clientX, e.clientY);
+});
+for (const ev of ['pointerup', 'pointercancel']) cvT.addEventListener(ev, () => { dragJ = -1; });
 cvT.addEventListener('pointerleave', () => hover = -1);
+// keep the page from scrolling while a finger drags a shim handle
+cvT.addEventListener('touchstart', e => { if (isCyc() && e.touches.length === 1) { const [X, Y] = localXY(e.touches[0]); if (shimAt(X, Y) >= 0) e.preventDefault(); } }, { passive: false });
+cvT.addEventListener('touchmove', e => { if (dragJ >= 0) e.preventDefault(); }, { passive: false });
 cvT.addEventListener('keydown', e => {
   const k = e.key;
+  if (isCyc()) {
+    const n = CYC.rS.length;
+    if (k === 'ArrowRight' || k === 'ArrowLeft') { cursor = cursor < 0 ? 0 : Math.max(0, Math.min(n - 1, cursor + (k === 'ArrowRight' ? 1 : -1))); e.preventDefault(); }
+    else if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(k) && cursor >= 0) {
+      setShim(cursor, shims[cursor] + (k.startsWith('Page') ? 4 : 1) * SHIM_STEP * (k === 'ArrowUp' || k === 'PageUp' ? 1 : -1)); e.preventDefault();
+    }
+    return;
+  }
   if (k === 'ArrowRight' || k === 'ArrowLeft') { cursor = cursor < 0 ? 0 : Math.max(0, Math.min(level.N - 1, cursor + (k === 'ArrowRight' ? 1 : -1))); e.preventDefault(); }
   else if ((k === 'Enter' || k === ' ') && cursor >= 0) { place(cursor); e.preventDefault(); }
   else if ((k === 'Delete' || k === 'Backspace') && cursor >= 0) { setCfg(cursor, '-'); e.preventDefault(); }
   else if (k.length === 1 && 'fdr'.includes(k.toLowerCase())) { const t = k.toUpperCase(); if (level.tools.includes(t)) { tool = t; renderTools(); } }
 });
 cvT.addEventListener('focus', () => { if (cursor < 0) cursor = 0; });
-$('clear').onclick = () => { cfg = cfg.map((c, k) => isFixed(k) ? c : '-'); save.builds[level.id] = cfg.join(''); persist(); recompute(); };
+$('clear').onclick = () => {
+  if (isCyc()) { shims = CYC.rS.map(() => 0); save.shims[level.id] = shims.slice(); persist(); recompute(); return; }
+  cfg = cfg.map((c, k) => isFixed(k) ? c : '-'); save.builds[level.id] = cfg.join(''); persist(); recompute(); };
 $('envT').onchange = e => { showEnv = e.target.checked; drawStatic(); };
 let rafQ = 0;
 const soon = () => { if (!rafQ) rafQ = requestAnimationFrame(() => { rafQ = 0; recompute(); }); };
 function curLabel() { $('curLbl').textContent = current < 0.01 ? 'Off' : current < 0.4 ? 'Low' : current < 0.8 ? 'Medium' : current > 0.995 ? 'Full' : 'High'; }
 $('current').oninput = e => { if (!level.current) return; current = e.target.value / 100; save.current = current; persist(); curLabel(); soon(); };
 function setField(b) {
-  field = Math.max(0, Math.min(BMAX, Math.round(b / BSTEP) * BSTEP));
+  const dl = level.dial; if (!dl) return;
+  field = +Math.max(dl.min, Math.min(dl.max, Math.round(b / dl.step) * dl.step)).toFixed(6);
   $('bField').value = field; save.field[level.id] = field; persist(); soon();
 }
-$('bField').oninput = e => { if (level.bend) setField(+e.target.value); };
-for (const [id, d] of [['bMinus', -BSTEP], ['bPlus', BSTEP]]) {
+$('bField').oninput = e => { if (level.dial) setField(+e.target.value); };
+for (const [id, sg] of [['bMinus', -1], ['bPlus', 1]]) {
+  const d = () => sg * (level.dial ? level.dial.step : 0);
   const btn = $(id); let t1 = 0, t2 = 0;
   const stop = () => { clearTimeout(t1); clearInterval(t2); };
-  btn.addEventListener('pointerdown', e => { e.preventDefault(); setField(field + d); stop(); t1 = setTimeout(() => { t2 = setInterval(() => setField(field + d), 70); }, 380); });
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); setField(field + d()); stop(); t1 = setTimeout(() => { t2 = setInterval(() => setField(field + d()), 70); }, 380); });
   for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
-  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setField(field + d); } });
+  btn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setField(field + d()); } });
 }
+for (const [id, v] of [['poleFlat', false], ['poleHills', true]]) $(id).onclick = () => {
+  if (!isCyc() || hills === v) return;
+  hills = v; save.hills[level.id] = v; persist(); renderPole(); recompute();
+};
 $('bClose').onclick = () => $('banner').classList.remove('show');
 $('bNext').onclick = () => { const next = LEVELS[LEVELS.indexOf(level) + 1]; if (next) setLevel(next.id); window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); };
 new ResizeObserver(() => { const w = Math.round(stage.getBoundingClientRect().width); if (w && w !== W) layout(); }).observe(stage);
